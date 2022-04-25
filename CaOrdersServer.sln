@@ -1,0 +1,36 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.32126.317
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "CaOrdersServer", "CaOrdersServer.csproj", "{535A3DFB-0D10-4B42-9EE6-5FD60E129852}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "amGlobals", "..\amGlobals\amGlobals.csproj", "{A69600FB-8789-4A7F-AED7-F22B6AEE9AB3}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Designer|Any CPU = Designer|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{535A3DFB-0D10-4B42-9EE6-5FD60E129852}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{535A3DFB-0D10-4B42-9EE6-5FD60E129852}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{535A3DFB-0D10-4B42-9EE6-5FD60E129852}.Designer|Any CPU.ActiveCfg = Debug|Any CPU
+		{535A3DFB-0D10-4B42-9EE6-5FD60E129852}.Designer|Any CPU.Build.0 = Debug|Any CPU
+		{535A3DFB-0D10-4B42-9EE6-5FD60E129852}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{535A3DFB-0D10-4B42-9EE6-5FD60E129852}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A69600FB-8789-4A7F-AED7-F22B6AEE9AB3}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A69600FB-8789-4A7F-AED7-F22B6AEE9AB3}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A69600FB-8789-4A7F-AED7-F22B6AEE9AB3}.Designer|Any CPU.ActiveCfg = Designer|Any CPU
+		{A69600FB-8789-4A7F-AED7-F22B6AEE9AB3}.Designer|Any CPU.Build.0 = Designer|Any CPU
+		{A69600FB-8789-4A7F-AED7-F22B6AEE9AB3}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A69600FB-8789-4A7F-AED7-F22B6AEE9AB3}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {871229E4-C27D-4F53-B12A-ACE24354FD76}
+	EndGlobalSection
+EndGlobal

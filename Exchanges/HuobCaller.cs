@@ -23,7 +23,9 @@ namespace CaOrdersServer
         }
         public bool CheckApiKey()
         {
-            bool b = false; if(_key == null) return b;
+            bool b = false;
+            if (String.IsNullOrEmpty(_key) || String.IsNullOrEmpty(_sec)) return b;
+
             HuobiClient client = new HuobiClient(
                 new HuobiClientOptions
                 {

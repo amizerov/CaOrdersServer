@@ -6,7 +6,11 @@ namespace CaOrdersServer
         public FrmMain()
         {
             InitializeComponent();
+        }
+        private void FrmMain_Load(object sender, EventArgs e)
+        {
             users.OnProgress += OnProgress;
+            timer_1min.Start();
         }
 
         private void btnKeys_Click(object sender, EventArgs e)
@@ -27,9 +31,17 @@ namespace CaOrdersServer
         {
             foreach (User u in users)
             {
-                u.CheckOrdersSpotBinaAsynk();
-                u.CheckOrdersSpotKucoAsynk();
-                u.CheckOrdersSpotHuobAsynk();
+                u.CheckOrdersAsynk(1);
+                //u.CheckOrdersAsynk(2);
+                //u.CheckOrdersAsynk(3);
+            }
+        }
+
+        private void btnMarg_Click(object sender, EventArgs e)
+        {
+            foreach (User u in users)
+            {
+                u.CheckOrdersAsynk(1, false);
             }
         }
 
@@ -60,6 +72,18 @@ namespace CaOrdersServer
             Invoke(new Action(() =>
                 txtLog.Text += msg
             ));
+        }
+
+        private void timer_1min_Tick(object sender, EventArgs e)
+        {
+            foreach (User u in users)
+            {
+                u.CheckOrdersAsynk(1, true, true);
+                u.CheckOrdersAsynk(1, false, true);
+
+                //u.CheckOrdersAsynk(2);
+                //u.CheckOrdersAsynk(3);
+            }
         }
     }
 }

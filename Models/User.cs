@@ -97,17 +97,30 @@ namespace CaOrdersServer
                 key.CheckedAt = DateTime.Now;
             }
         }
-        public void CheckOrdersSpotBinaAsynk()
+        public void CheckOrdersAsynk(int exch, bool spotmarg = true, bool NewOnly = false)
         {
-            Task.Run(() => _binaCaller.CheckOrdersSpot());
-        }
-        public void CheckOrdersSpotKucoAsynk()
-        {
-            Task.Run(() => _kucoCaller.CheckOrdersSpot());
-        }
-        public void CheckOrdersSpotHuobAsynk()
-        {
-            Task.Run(() => _huobCaller.CheckOrdersSpot());
+            switch (exch) {
+                case 1:
+                    if (spotmarg)
+                    {
+                        if(NewOnly)
+                            Task.Run(() => _binaCaller.CheckOrdersSpotNewOnly());
+                        else
+                            Task.Run(() => _binaCaller.CheckOrdersSpot());
+                    }
+                    else
+                        if(NewOnly)
+                            Task.Run(() => _binaCaller.CheckOrdersMargNewOnly());
+                        else
+                            Task.Run(() => _binaCaller.CheckOrdersMarg());
+                    break;
+                case 2:
+                    Task.Run(() => _kucoCaller.CheckOrdersSpot());
+                    break;
+                case 3:
+                    Task.Run(() => _huobCaller.CheckOrdersSpot());
+                    break;
+            }
         }
         public bool StartListenSpotBina()
         {

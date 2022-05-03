@@ -1,5 +1,7 @@
 namespace CaOrdersServer
 {
+    using Binance.Net.Enums;
+    using Binance.Net.Objects.Models.Spot;
     using System;
     using System.Collections.Generic;
     using System.ComponentModel.DataAnnotations;
@@ -11,7 +13,8 @@ namespace CaOrdersServer
         Open = 1,
         Filled = 2,
         Canceled = 0,
-        NotFound = -1
+        NotFound = -1,
+        Error = -2
     }
 
     [Table("Orders")]
@@ -31,7 +34,29 @@ namespace CaOrdersServer
         public DateTime? dt_create { get; set; }
         public DateTime? dt_exec { get; set; }
         public DateTime? dtu { get; set; }
+        public CaOrder() { }
+        public CaOrder(BinanceOrder o, int uid, bool sm = true /*spot, false - marg*/)
+        {
+            usr_id = uid;
 
+            ord_id = o.Id.ToString();
+            exchange = 1; // 1 - Bina, 2 - Kuco, 3 - Huob
+            symbol = o.Symbol;
+            spotmar = sm;
+            buysel = o.Side == OrderSide.Buy;
+            price = o.Price;
+            qty = o.Quantity;
+            dt_create = o.CreateTime;
+            state = 
+                o.Status == OrderStatus.New ? (int)OState.Open :
+                o.Status == OrderStatus.Filled ? (int)OState.Filled :
+                o.Status == OrderStatus.Canceled ? (int)OState.Canceled :
+                o.Status == OrderStatus.Rejected ? (int)OState.Canceled :
+                o.Status == OrderStatus.Expired ? (int)OState.Canceled :
+                o.Status == OrderStatus.PartiallyFilled ? (int)OState.Open : (int)OState.Error;
+
+            if (o.Status == OrderStatus.Filled) dt_exec = o.UpdateTime;
+        }
         public void Save()
         {
             using(CaDbConnector db = new CaDbConnector())
@@ -74,10 +99,10 @@ namespace CaOrdersServer
             using (CaDbConnector db = new CaDbConnector())
             {
                 // посмотреть ордера юзера в базе и пометить удаленными если нет на бирже
-                foreach (CaOrder ord in db.Orders!
-                    .Where(x => x.usr_id == usr_id && x.exchange == exchen)
-                    .OrderBy(x => x.id)
-                )
+                List<CaOrder> os = db.Orders!
+                    .Where(x => x.usr_id == usr_id && x.exchange == exchen).ToList();
+
+                foreach (CaOrder ord in os)
                 {// по всем в базе
                     if (this.Any(o => o.ord_id == ord.ord_id))
                     {
@@ -85,7 +110,7 @@ namespace CaOrdersServer
                     }
                     else
                     {// если нет на бирже, то ставим
-                        if (ord.dt_create < DateTime.Now.AddDays(-10)) 
+                        if (ord.dt_create < DateTime.Now.AddDays(-120)) 
                         {
                             ord.state = (int)OState.NotFound; // удален или отменен, нет на бирже
                             ord.dtu = DateTime.Now;

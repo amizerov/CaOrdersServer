@@ -1,13 +1,10 @@
+using Binance.Net.Enums;
+using Binance.Net.Objects.Models.Spot;
+using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
+
 namespace CaOrdersServer
 {
-    using Binance.Net.Enums;
-    using Binance.Net.Objects.Models.Spot;
-    using System;
-    using System.Collections.Generic;
-    using System.ComponentModel.DataAnnotations;
-    using System.ComponentModel.DataAnnotations.Schema;
-    using System.Linq;
-
     public enum OState
     {
         Open = 1,

@@ -1,47 +1,9 @@
 ﻿using am.BL;
+using Binance.Net.Objects.Models.Spot;
 using System.Data;
 
 namespace CaOrdersServer
 {
-    public class ApiKey
-    {
-        public int ID;
-        public string Exchange;
-        public string Key;
-        public string Secret;
-        public string PassPhrase;
-        public bool IsWorking {
-            get {
-                bool b = false;
-                DataTable dt = G.db_select($"select IsWorking from UserKeys where ID={ID}");
-                if(dt.Rows.Count > 0)
-                    b = G._B(dt.Rows[0]["IsWorking"]);
-
-                return b;
-            } 
-            set {
-                string sql = $"update UserKeys set IsWorking = {(value ? 1 : 0)} where ID={ID}";
-                G.db_exec(sql);
-            }
-        }
-        public DateTime CheckedAt {
-            get {
-                return G._D(G.db_select($"select CheckedAt from UserKeys where ID={ID}"));
-            }
-            set {
-                string sql = $"update UserKeys set CheckedAt = '{value.ToString("yyyy-MM-dd hh:mm:ss")}' where ID={ID}";
-                G.db_exec(sql);
-            }
-        }
-        public ApiKey(DataRow k)
-        {
-            ID = G._I(k["ID"]);
-            Exchange = G._S(k["Exchange"]);
-            Key = G._S(k["ApiKey"]);
-            Secret = G._S(k["ApiSecret"]);
-            PassPhrase = G._S(k["ApiPassPhrase"]);
-        }
-    }
     public class User
     {
         public int ID;
@@ -76,8 +38,35 @@ namespace CaOrdersServer
             _kucoCaller = new(this);
             _huobCaller = new(this); _huobCaller.OnProgress += OnOrdersProgress;
 ;        }
+
+        public void UpdateAccount()
+        {/******************************************************* 
+          * Вызывается при изменении балансов на счету Бинанса
+          * если подписались на событие UserDataUpdates в BinaSoket
+           */
+            List<BinanceBalance> balances = _binaCaller.GetBalances();
+
+            foreach (BinanceBalance b in balances)
+            {
+                CaBalance userBalanceOnBinance = new CaBalance(b, ID);
+                userBalanceOnBinance.Update();
+            }        
+        }
+        public void UpdateOrder(string symbo, long oid)
+        {/******************************************************* 
+          * Вызывается при изменении изменении состояния ордера на Бинанса
+          * если подписались на событие UserDataUpdates в BinaSoket
+           */
+            BinanceOrder? o = _binaCaller.GetOrder(symbo, oid);
+            if (o == null) return;
+
+            CaOrder order = new CaOrder(o, ID);
+            order.Save();
+        }
         public void CheckApiKeys()
-        {
+        {/******************************************************* 
+          * Проверка ключей доступа всех бирж
+           */
             foreach (var key in ApiKeys)
             {
                 bool b = false;
@@ -97,36 +86,57 @@ namespace CaOrdersServer
                 key.CheckedAt = DateTime.Now;
             }
         }
-        public void CheckOrdersAsynk(int exch, bool spotmarg = true, bool NewOnly = false)
-        {
-            switch (exch) {
-                case 1:
-                    if (spotmarg)
-                    {
-                        if(NewOnly)
-                            Task.Run(() => _binaCaller.CheckOrdersSpotNewOnly());
-                        else
-                            Task.Run(() => _binaCaller.CheckOrdersSpot());
-                    }
-                    else
-                        if(NewOnly)
-                            Task.Run(() => _binaCaller.CheckOrdersMargNewOnly());
-                        else
-                            Task.Run(() => _binaCaller.CheckOrdersMarg());
-                    break;
-                case 2:
-                    Task.Run(() => _kucoCaller.CheckOrdersSpot());
-                    break;
-                case 3:
-                    Task.Run(() => _huobCaller.CheckOrdersSpot());
-                    break;
+        public void CheckOrdersBinaAsync(bool spotmarg = true)
+        {/******************************************************* 
+          * Проверка ордеров на Бинансе, вызывается только один раз при запуске программы,
+          * ордера сохраняются или обновляются в БД, потом их статусы обновляются через сокет.
+          * Совмещен вызов для спота и маржина по параметру spotmarg = true по умолчанию спот.
+           */
+            if (spotmarg)
+            {
+                Task.Run(() =>
+                    { 
+                        List<BinanceOrder>? orders = _binaCaller.GetAllOrdersSpot(); 
+                        if(orders == null) return;
+
+                        foreach (var o in orders)
+                        {
+                            CaOrder order = new CaOrder(o, ID);
+                            order.Save();
+                            OnProgress?.Invoke($"Bina({Name}): spot Order {o.Id} - {o.Symbol} - state = {o.Status} / {order.state}");
+                        }
+                    });
             }
+            else
+                Task.Run(() => _binaCaller.CheckOrdersMarg());
+        }
+        public void CheckOrdersKucoAsync(bool spotmarg = true, bool NewOnly = false)
+        {
+            Task.Run(() => _kucoCaller.CheckOrdersSpot());
+        }
+        public void CheckOrdersHuobAsync(bool spotmarg = true, bool NewOnly = false)
+        {
+            Task.Run(() => _huobCaller.CheckOrdersSpot());
         }
         public bool StartListenSpotBina()
         {
+            bool b = false;
+            
             _binaSocket = new BinaSocket(this);
             _binaSocket.OnMessage += OnOrdersProgress;
-            return _binaSocket.InitOrdersListenerSpot();
+            b = _binaSocket.InitOrdersListenerSpot();
+
+            if(b)
+                OnProgress?.Invoke(Name + " - Start listen spot Bina");
+            else
+                OnProgress?.Invoke(Name + " - Error listen spot Bina");
+
+            return b;
+        }
+        public bool KeepAliveSpotBina()
+        {
+            if(_binaSocket == null) return false;
+            return _binaSocket.KeepAliveSocket();
         }
         public bool StartListenSpotKuco()
         {

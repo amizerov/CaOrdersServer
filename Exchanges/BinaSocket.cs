@@ -1,6 +1,8 @@
 ﻿using Binance.Net.Clients;
 using Binance.Net.Objects;
+using Binance.Net.Objects.Models.Spot.Socket;
 using CryptoExchange.Net.Authentication;
+using CryptoExchange.Net.Sockets;
 using Microsoft.Extensions.Logging;
 
 namespace CaOrdersServer
@@ -9,7 +11,13 @@ namespace CaOrdersServer
 	{
 		public event Action<string>? OnMessage;
 
+		bool _keyIsWorking = false;
+		string _key = "", _sec = "";
 		BinanceSocketClient? _socketClient;
+		BinanceClient? _restClient;
+		UpdateSubscription? _socketSubscr;
+
+		string _listenKey = ""; 
 		User _user;
 
 		public BinaSocket(User usr)
@@ -17,57 +25,91 @@ namespace CaOrdersServer
 			_user = usr;
 			ApiKey? keys = _user.ApiKeys.Find(k => k.Exchange == "Bina" && k.IsWorking == true);
 			if (keys == null) return;
+			_key = keys.Key;
+			_sec = keys.Secret;
 
-			string key = keys.Key;
-			string sec = keys.Secret;
+			_socketClient = new BinanceSocketClient(
+				new BinanceSocketClientOptions() { 
+					ApiCredentials = new ApiCredentials(_key, _sec), 
+					AutoReconnect = true,
+					LogLevel = LogLevel.Trace 
+				});
 
-			BinanceSocketClientOptions opt = new BinanceSocketClientOptions();
-			opt.LogLevel = LogLevel.Debug;
+			if(_socketClient != null)
+				_keyIsWorking = keys.IsWorking;
 
-			if(key.Length > 10 && sec.Length > 10)
-				opt.ApiCredentials = new ApiCredentials(key, sec);
+		}
+		private bool CreateListenKeyForSocket()
+        {
+			if (!_keyIsWorking) return false;
 
-			_socketClient = new BinanceSocketClient(opt);
+			_restClient = new BinanceClient(
+				new BinanceClientOptions()
+				{
+					ApiCredentials = new ApiCredentials(_key, _sec)
+				});
+			var listenKey = _restClient.SpotApi.Account.StartUserStreamAsync().Result;
+			if (!listenKey.Success) return false;
+			_listenKey = listenKey.Data;
+
+			return true;
 		}
 		public bool InitOrdersListenerSpot() 
 		{
-			bool b = false;
-			if (_socketClient == null) return b;
+			if(!CreateListenKeyForSocket()) return false;
+
 			try
 			{
-				var res = _socketClient.SpotStreams.SubscribeToUserDataUpdatesAsync(
-					_user.Name,
+				var res = _socketClient!.SpotStreams.SubscribeToUserDataUpdatesAsync(_listenKey,
 					onOrderUpdateMessage =>
 					{
-						Log.Write("OrderUpdate", _user.ID);
-						OnMessage?.Invoke("OrderUpdate");
+						BinanceStreamOrderUpdate ord = onOrderUpdateMessage.Data;
+						OnMessage?.Invoke($"Order #{ord.Id} of user {_user.Name} is updated to {ord.Status}");
+					
+						_user.UpdateOrder(ord.Symbol, ord.Id);
 					},
-					onOcoOrderUpdateMessage =>
-					{
-						Log.Write("OcoOrderUpdate", _user.ID);
-						OnMessage?.Invoke("OcoOrderUpdate");
-					},
+					null,
 					onAccountPositionMessage =>
 					{
-						Log.Write("AccountPosition", _user.ID);
-						OnMessage?.Invoke("AccountPosition");
+						BinanceStreamPositionsUpdate acc =onAccountPositionMessage.Data;
+						OnMessage?.Invoke($"Account position of user {_user.Name} is updated");
+
+						_user.UpdateAccount();
 					},
 					onAccountBalanceUpdateMessage =>
 					{
-						Log.Write("AccountBalanceUpda", _user.ID);
-						OnMessage?.Invoke("AccountBalanceUpda");
+						BinanceStreamBalanceUpdate acc = onAccountBalanceUpdateMessage.Data;
+						OnMessage?.Invoke($"Account balance of user {_user.Name} is updated");
+
+						_user.UpdateAccount();
 					}
 				).Result;
-				if (res.Success)
-					b = true;
-				else
+				if (res.Success) {
+					_socketSubscr = res.Data;
+				}
+				else {
 					Log.Write($"Error in SubscribeToUserDataUpdatesAsync: {res.Error?.Message}", _user.ID);
+					return false; 
+				}
 			}
 			catch (Exception ex)
             {
 				Log.Write($"Exception in SubscribeToUserDataUpdatesAsync: {ex.Message}", _user.ID);
+				return false;
 			}
-			return b;
+			return true;
+		}
+		public bool KeepAliveSocket()
+        {
+			if (_socketSubscr == null) return false;
+			try
+			{
+				_socketSubscr.ReconnectAsync();
+			}
+			catch { 
+				return false;
+			}
+			return true;
 		}
 		public void Dispose(bool setNull = true)
 		{

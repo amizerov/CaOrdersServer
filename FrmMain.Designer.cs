@@ -33,7 +33,7 @@
             this.btnKeys = new System.Windows.Forms.Button();
             this.btnOrder = new System.Windows.Forms.Button();
             this.btnListen = new System.Windows.Forms.Button();
-            this.timer_1min = new System.Windows.Forms.Timer(this.components);
+            this.timer_15min = new System.Windows.Forms.Timer(this.components);
             this.btnMarg = new System.Windows.Forms.Button();
             this.SuspendLayout();
             // 
@@ -79,10 +79,10 @@
             this.btnListen.UseVisualStyleBackColor = true;
             this.btnListen.Click += new System.EventHandler(this.btnListen_Click);
             // 
-            // timer_1min
+            // timer_15min
             // 
-            this.timer_1min.Interval = 20000;
-            this.timer_1min.Tick += new System.EventHandler(this.timer_1min_Tick);
+            this.timer_15min.Interval = 900000;
+            this.timer_15min.Tick += new System.EventHandler(this.timer_15min_Tick);
             // 
             // btnMarg
             // 
@@ -118,7 +118,7 @@
         private Button btnKeys;
         private Button btnOrder;
         private Button btnListen;
-        private System.Windows.Forms.Timer timer_1min;
+        private System.Windows.Forms.Timer timer_15min;
         private Button btnMarg;
     }
 }

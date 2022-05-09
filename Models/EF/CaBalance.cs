@@ -1,4 +1,5 @@
 ﻿using Binance.Net.Objects.Models.Spot;
+using Binance.Net.Objects.Models.Spot.Socket;
 using Microsoft.EntityFrameworkCore;
 using System.ComponentModel.DataAnnotations.Schema;
 
@@ -17,6 +18,15 @@ namespace CaOrdersServer
 
         public CaBalance() { }
         public CaBalance(BinanceBalance b, int uid)
+        {
+            usr_id = uid;
+            exc_id = 1;
+            Asset = b.Asset;
+            Available = b.Available;
+            Locked = b.Locked;
+            Total = b.Total;
+        }
+        public CaBalance(BinanceStreamBalance b, int uid)
         {
             usr_id = uid;
             exc_id = 1;

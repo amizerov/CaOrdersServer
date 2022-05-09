@@ -10,16 +10,16 @@ namespace CaOrdersServer
         public event Action<string>? OnProgress;
 
         User _user;
-        string? _key, _sec;
+        ApiKey _apiKey;
+        HuobiClient _restClient = new();
+
 
         public HuobCaller(User usr)
         {
             _user = usr;
-            ApiKey? keys = _user.ApiKeys.Find(k => k.Exchange == "Huob");
-            if (keys == null) return;
+            _apiKey = _user.ApiKeys.Find(k => k.Exchange == "Huob") ?? new();
 
-            _key = keys.Key;
-            _sec = keys.Secret;
+            CheckApiKey();
         }
         public bool CheckApiKey()
         {

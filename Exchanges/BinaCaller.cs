@@ -14,7 +14,7 @@ namespace CaOrdersServer
 
         User _user;
         ApiKey _apiKey;
-        BinanceClient _binaClient = new();
+        BinanceClient _restClient = new();
 
         public BinaCaller(User usr) { 
             _user = usr;
@@ -27,7 +27,7 @@ namespace CaOrdersServer
             bool res = false;
             if (_apiKey.ID > 0)
             {
-                _binaClient = new BinanceClient(
+                _restClient = new BinanceClient(
                     new BinanceClientOptions()
                     {
                         ApiCredentials = new ApiCredentials(_apiKey.Key!, _apiKey.Secret!)
@@ -46,7 +46,7 @@ namespace CaOrdersServer
             List<BinanceBalance> balances = new();
             if (_apiKey.IsWorking)
             {
-                var r = _binaClient!.SpotApi.Account.GetAccountInfoAsync().Result;
+                var r = _restClient!.SpotApi.Account.GetAccountInfoAsync().Result;
                 if (r != null && r.Success)
                 {
                     balances = r.Data.Balances.ToList();
@@ -54,24 +54,15 @@ namespace CaOrdersServer
             }
             return balances;
         }
-        public BinanceOrder? GetOrder(string symbo, long oid)
-        {
-            if (_apiKey.IsWorking)
-            {
-                var res = _binaClient?.SpotApi.Trading.GetOrderAsync(symbo, oid).Result;
-                if (res != null && res.Success)
-                    return res.Data;
-            }
-            return null;
-        }
-        public List<BinanceOrder> GetAllOrdersSpot()
+        public List<BinanceOrder> GetAllOrders(bool spotMarg = true)
         {
             List<BinanceOrder> orders = new List <BinanceOrder>();
             if (_apiKey.IsWorking)
             {
                 foreach (var symbo in GetSymbols())
                 {
-                    var r = _binaClient!.SpotApi.Trading.GetOrdersAsync(symbo).Result;
+                    var r = spotMarg ? _restClient!.SpotApi.Trading.GetOrdersAsync(symbo).Result
+                                     : _restClient!.SpotApi.Trading.GetMarginOrdersAsync(symbo).Result;
                     if (r.Success)
                     {
                         List<BinanceOrder> os = r.Data.ToList();
@@ -81,44 +72,6 @@ namespace CaOrdersServer
                 }
             }
             return orders;
-        }
-
-        public void CheckOrdersMarg()
-        {
-            if (_binaClient == null) return;
-            OnProgress?.Invoke($"Bina({_user.Name}): check margin orders start");
-
-            var r1 = _binaClient.SpotApi.Trading.GetOpenMarginOrdersAsync().Result;
-            if (r1.Success)
-            {
-                foreach (BinanceOrder o in r1.Data)
-                {
-                    CaOrder order = new CaOrder(o, _user.ID, false/*marg*/);
-                    order.Save();
-
-                    OnProgress?.Invoke($"Bina({_user.Name}): margin Order {o.Id} - {o.Symbol} - state = {o.Status}");
-                }
-            }
-
-            List<string> Symbols = GetSymbols();
-            foreach (var symbo in Symbols)
-            {
-                var r2 = _binaClient.SpotApi.Trading.GetMarginOrdersAsync(symbo).Result;
-                if (r2.Success)
-                {
-                    foreach (var o in r2.Data)
-                    {
-                        if (o.Status == OrderStatus.New) continue;
-
-                        CaOrder order = new CaOrder(o, _user.ID, false/*marg*/);
-                        order.Save();
-
-                        OnProgress?.Invoke($"Bina({_user.Name}): margin Order {o.Id} - {o.Symbol} - state = {o.Status}");
-                    }
-                }
-            }
-
-            OnProgress?.Invoke($"Bina({_user.Name}): margin orders done");
         }
         public List<string> GetSymbols()
         {

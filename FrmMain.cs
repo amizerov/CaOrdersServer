@@ -35,6 +35,10 @@ namespace CaOrdersServer
         {   
             foreach(User u in users)
             {
+                // Проверка доступа по ключам пользователя на всех биржах
+                // результат сохраняется в БД и доступен через
+                // u.ApiKeys.Find(k => k.Exchange == "Bina").IsWorking
+                // Значение свойства IsWorking читается напрямую из БД
                 u.CheckApiKeys();
             }
         }

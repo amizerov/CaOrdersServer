@@ -1,5 +1,7 @@
 using Binance.Net.Enums;
 using Binance.Net.Objects.Models.Spot;
+using Binance.Net.Objects.Models.Spot.Socket;
+using Kucoin.Net.Objects.Models.Spot;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
@@ -51,11 +53,48 @@ namespace CaOrdersServer
                 o.Status == OrderStatus.Rejected ? (int)OState.Canceled :
                 o.Status == OrderStatus.Expired ? (int)OState.Canceled :
                 o.Status == OrderStatus.PartiallyFilled ? (int)OState.Open : (int)OState.Error;
+        }
+        public CaOrder(BinanceStreamOrderUpdate o, int uid, bool sm = true)
+        {
+            usr_id = uid;
+
+            ord_id = o.Id.ToString();
+            exchange = 1; // 1 - Bina, 2 - Kuco, 3 - Huob
+            symbol = o.Symbol;
+            spotmar = sm;
+            buysel = o.Side == OrderSide.Buy;
+            price = o.Price;
+            qty = o.Quantity;
+            dt_create = o.CreateTime;
+            state =
+                o.Status == OrderStatus.New ? (int)OState.Open :
+                o.Status == OrderStatus.Filled ? (int)OState.Filled :
+                o.Status == OrderStatus.Canceled ? (int)OState.Canceled :
+                o.Status == OrderStatus.Rejected ? (int)OState.Canceled :
+                o.Status == OrderStatus.Expired ? (int)OState.Canceled :
+                o.Status == OrderStatus.PartiallyFilled ? (int)OState.Open : (int)OState.Error;
 
             if (o.Status == OrderStatus.Filled) dt_exec = o.UpdateTime;
         }
-        public void Save()
+        public CaOrder(KucoinOrder o, int uid, bool sm = true /*spot, false - marg*/)
         {
+            usr_id = uid;
+
+            ord_id = o.Id.ToString();
+            exchange = 1; // 1 - Bina, 2 - Kuco, 3 - Huob
+            symbol = o.Symbol;
+            spotmar = sm;
+            buysel = o.Side == Kucoin.Net.Enums.OrderSide.Buy;
+            price = (decimal)o.Price!;
+            qty = (decimal)o.Quantity!;
+            dt_create = o.CreateTime;
+            state = 
+                (bool)o.IsActive! ? (int)OState.Open : (int)OState.Filled;
+        }
+       public bool Save()
+        {/* —оздает новый или обновл€ет существующий ордер
+          */
+            bool newOrUpdated = true;
             using(CaDbConnector db = new CaDbConnector())
             {
                 CaOrder? o = db.Orders!.Where(x =>
@@ -77,9 +116,17 @@ namespace CaOrdersServer
                 else
                 {
                     db.Orders!.Add(this);
+                    newOrUpdated = false;
                 }
                 db.SaveChanges();
+
+                return newOrUpdated;
             }
+        }
+        public static bool UpdateStatus(BinanceStreamOrderUpdate bo, int uid, bool spotMarg)
+        {
+            CaOrder order = new CaOrder(bo, uid, spotMarg);
+            return order.Save();
         }
     }
     public class CaOrders : List<CaOrder>

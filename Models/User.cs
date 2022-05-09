@@ -1,5 +1,7 @@
 ﻿using am.BL;
 using Binance.Net.Objects.Models.Spot;
+using Binance.Net.Objects.Models.Spot.Socket;
+using Kucoin.Net.Objects.Models.Spot;
 using System.Data;
 
 namespace CaOrdersServer
@@ -39,7 +41,8 @@ namespace CaOrdersServer
             _huobCaller = new(this); _huobCaller.OnProgress += OnOrdersProgress;
 ;        }
 
-        public void UpdateAccount()
+        // Socket used ------------>
+        public void UpdateAccountBina()
         {/******************************************************* 
           * Вызывается при изменении балансов на счету Бинанса
           * если подписались на событие UserDataUpdates в BinaSoket
@@ -52,17 +55,24 @@ namespace CaOrdersServer
                 userBalanceOnBinance.Update();
             }        
         }
-        public void UpdateOrder(string symbo, long oid)
+        public void UpdateAccount(List<BinanceStreamBalance> balances)
+        {
+            foreach (BinanceStreamBalance b in balances)
+            {
+                CaBalance userBalanceOnBinance = new CaBalance(b, ID);
+                userBalanceOnBinance.Update();
+            }
+        }
+        public bool UpdateOrder(BinanceStreamOrderUpdate ord, bool spotMarg)
         {/******************************************************* 
           * Вызывается при изменении изменении состояния ордера на Бинанса
           * если подписались на событие UserDataUpdates в BinaSoket
            */
-            BinanceOrder? o = _binaCaller.GetOrder(symbo, oid);
-            if (o == null) return;
-
-            CaOrder order = new CaOrder(o, ID);
-            order.Save();
+            return CaOrder.UpdateStatus(ord, ID, spotMarg);
         }
+        //-------------------------<
+
+        // One time call functions ->
         public void CheckApiKeys()
         {/******************************************************* 
           * Проверка ключей доступа всех бирж
@@ -86,30 +96,41 @@ namespace CaOrdersServer
                 key.CheckedAt = DateTime.Now;
             }
         }
-        public void CheckOrdersBinaAsync(bool spotmarg = true)
+        public void CheckOrdersBinaAsync(bool spotMarg = true)
         {/******************************************************* 
           * Проверка ордеров на Бинансе, вызывается только один раз при запуске программы,
           * ордера сохраняются или обновляются в БД, потом их статусы обновляются через сокет.
-          * Совмещен вызов для спота и маржина по параметру spotmarg = true по умолчанию спот.
+          * Совмещен вызов для спота и маржина.
            */
-            if (spotmarg)
+            Task.Run(() =>
             {
-                Task.Run(() =>
-                    { 
-                        List<BinanceOrder>? orders = _binaCaller.GetAllOrdersSpot(); 
-                        if(orders == null) return;
-
-                        foreach (var o in orders)
-                        {
-                            CaOrder order = new CaOrder(o, ID);
-                            order.Save();
-                            OnProgress?.Invoke($"Bina({Name}): spot Order {o.Id} - {o.Symbol} - state = {o.Status} / {order.state}");
-                        }
-                    });
-            }
-            else
-                Task.Run(() => _binaCaller.CheckOrdersMarg());
+                List<BinanceOrder> orders = _binaCaller.GetAllOrders(spotMarg);
+                foreach (var o in orders)
+                {
+                    CaOrder order = new CaOrder(o, ID);
+                    order.Save();
+                    OnProgress?.Invoke($"Bina({Name}): {(order.spotmar ? "SPOT" : "MARG")} Order {o.Id} - {o.Symbol} - state = {o.Status} / {order.state}");
+                }
+            });
         }
+        public void CheckOrdersKucoAsync(bool spotMarg = true)
+        {/******************************************************* 
+          * Проверка ордеров на Кукоине, вызывается только один раз при запуске программы,
+          * ордера сохраняются или обновляются в БД, потом их статусы обновляются через сокет.
+          * Совмещен вызов для спота и маржина.
+           */
+            Task.Run(() =>
+            {
+                List<KucoinOrder> orders = _kucoCaller.GetAllOrders(spotMarg);
+                foreach (var o in orders)
+                {
+                    CaOrder order = new CaOrder(o, ID);
+                    order.Save();
+                    OnProgress?.Invoke($"Kuco({Name}): {(order.spotmar ? "SPOT" : "MARG")} Order {o.Id} - {o.Symbol} - state = {((bool)o.IsActive ? "Active" : "Done")} / {order.state}");
+                }
+            });
+        }
+
         public void CheckOrdersKucoAsync(bool spotmarg = true, bool NewOnly = false)
         {
             Task.Run(() => _kucoCaller.CheckOrdersSpot());
@@ -118,13 +139,13 @@ namespace CaOrdersServer
         {
             Task.Run(() => _huobCaller.CheckOrdersSpot());
         }
-        public bool StartListenSpotBina()
+        public bool StartListenOrdersBina(bool spotMarg = true)
         {
             bool b = false;
             
             _binaSocket = new BinaSocket(this);
             _binaSocket.OnMessage += OnOrdersProgress;
-            b = _binaSocket.InitOrdersListenerSpot();
+            b = _binaSocket.InitOrdersListener(spotMarg);
 
             if(b)
                 OnProgress?.Invoke(Name + " - Start listen spot Bina");
@@ -136,7 +157,7 @@ namespace CaOrdersServer
         public bool KeepAliveSpotBina()
         {
             if(_binaSocket == null) return false;
-            return _binaSocket.KeepAliveSocket();
+            return _binaSocket.KeepAlive();
         }
         public bool StartListenSpotKuco()
         {
@@ -148,10 +169,8 @@ namespace CaOrdersServer
             _huobSocket = new HuobSocket(this);
             return _huobSocket.InitOrdersListenerSpot();
         }
-        void OnOrdersProgress(string msg)
-        {
-            OnProgress?.Invoke(msg);
-        }
+        void OnOrdersProgress(string msg) => OnProgress?.Invoke(msg);
+        
     }
 
     public class Users : List<User>

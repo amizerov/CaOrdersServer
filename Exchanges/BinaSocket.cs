@@ -11,100 +11,119 @@ namespace CaOrdersServer
 	{
 		public event Action<string>? OnMessage;
 
-		bool _keyIsWorking = false;
-		string _key = "", _sec = "";
-		BinanceSocketClient? _socketClient;
-		BinanceClient? _restClient;
-		UpdateSubscription? _socketSubscr;
-
-		string _listenKey = ""; 
 		User _user;
+		ApiKey _apiKey;
+
+		BinanceSocketClient? _socketClient;
+		UpdateSubscription? _socketSubscrSpot;
+		UpdateSubscription? _socketSubscrMarg;
+		
+		BinanceClient? _restClient;
+
+		string _listenKeySpot = "";
+		string _listenKeyMarg = "";
 
 		public BinaSocket(User usr)
 		{
 			_user = usr;
-			ApiKey? keys = _user.ApiKeys.Find(k => k.Exchange == "Bina" && k.IsWorking == true);
-			if (keys == null) return;
-			_key = keys.Key;
-			_sec = keys.Secret;
+			_apiKey = _user.ApiKeys.Find(k => k.Exchange == "Bina") ?? new();
 
-			_socketClient = new BinanceSocketClient(
-				new BinanceSocketClientOptions() { 
-					ApiCredentials = new ApiCredentials(_key, _sec), 
-					AutoReconnect = true,
-					LogLevel = LogLevel.Trace 
-				});
-
-			if(_socketClient != null)
-				_keyIsWorking = keys.IsWorking;
-
+			if (_apiKey.IsWorking)
+			{
+				_socketClient = new BinanceSocketClient(
+					new BinanceSocketClientOptions()
+					{
+						ApiCredentials = new ApiCredentials(_apiKey.Key, _apiKey.Secret),
+						AutoReconnect = true,
+						LogLevel = LogLevel.Trace
+					});
+			}
 		}
-		private bool CreateListenKeyForSocket()
+		private bool CreateListenKey(bool spotMarg = true)
         {
-			if (!_keyIsWorking) return false;
-
 			_restClient = new BinanceClient(
 				new BinanceClientOptions()
 				{
-					ApiCredentials = new ApiCredentials(_key, _sec)
+					ApiCredentials = new ApiCredentials(_apiKey.Key, _apiKey.Secret)
 				});
-			var listenKey = _restClient.SpotApi.Account.StartUserStreamAsync().Result;
-			if (!listenKey.Success) return false;
-			_listenKey = listenKey.Data;
-
+			var res = spotMarg ? _restClient.SpotApi.Account.StartUserStreamAsync().Result
+							   : _restClient.SpotApi.Account.StartMarginUserStreamAsync().Result;
+			if (res.Success)
+			{
+				if (spotMarg)
+					_listenKeySpot = res.Data;
+				else
+					_listenKeyMarg = res.Data;	
+			}
+            else
+            {
+				OnMessage?.Invoke($"Create {(spotMarg ? "Spot" : "Marg")}  Listen Key for {_user.Name} failed - {res.Error?.Message}");
+				return false;
+            }
 			return true;
 		}
-		public bool InitOrdersListenerSpot() 
+		public bool InitOrdersListener(bool spotMarg = true) 
 		{
-			if(!CreateListenKeyForSocket()) return false;
-
-			try
+			if (CreateListenKey(spotMarg))
 			{
-				var res = _socketClient!.SpotStreams.SubscribeToUserDataUpdatesAsync(_listenKey,
+
+				var listenKey = spotMarg ? _listenKeySpot : _listenKeyMarg;
+				var res = _socketClient!.SpotStreams.SubscribeToUserDataUpdatesAsync(listenKey,
 					onOrderUpdateMessage =>
 					{
 						BinanceStreamOrderUpdate ord = onOrderUpdateMessage.Data;
-						OnMessage?.Invoke($"Order #{ord.Id} of user {_user.Name} is updated to {ord.Status}");
-					
-						_user.UpdateOrder(ord.Symbol, ord.Id);
+
+						bool newOrUpdated = _user.UpdateOrder(ord, spotMarg);
+						if(newOrUpdated)
+							OnMessage?.Invoke($"New Order #{ord.Id} added for user {_user.Name} in state {ord.Status}");
+						else
+							OnMessage?.Invoke($"Order #{ord.Id} of user {_user.Name} is updated to {ord.Status}");
+
 					},
 					null,
 					onAccountPositionMessage =>
 					{
-						BinanceStreamPositionsUpdate acc =onAccountPositionMessage.Data;
+						BinanceStreamPositionsUpdate acc = onAccountPositionMessage.Data;
 						OnMessage?.Invoke($"Account position of user {_user.Name} is updated");
 
-						_user.UpdateAccount();
+						_user.UpdateAccount(acc.Balances.ToList());
 					},
 					onAccountBalanceUpdateMessage =>
 					{
 						BinanceStreamBalanceUpdate acc = onAccountBalanceUpdateMessage.Data;
 						OnMessage?.Invoke($"Account balance of user {_user.Name} is updated");
 
-						_user.UpdateAccount();
+						_user.UpdateAccountBina();
 					}
 				).Result;
-				if (res.Success) {
-					_socketSubscr = res.Data;
+				if (res.Success)
+				{
+					if (spotMarg)
+						_socketSubscrSpot = res.Data;
+					else
+						_socketSubscrMarg = res.Data;
+
+					OnMessage?.Invoke($"{(spotMarg ? "Spot" : "Marg")} socket for {_user.Name} init ok");
 				}
-				else {
-					Log.Write($"Error in SubscribeToUserDataUpdatesAsync: {res.Error?.Message}", _user.ID);
-					return false; 
+				else
+				{
+					string msg = $"Error in SubscribeToUserDataUpdatesAsync: {res.Error?.Message}";
+					OnMessage?.Invoke(msg);
+					Log.Write(msg, _user.ID);
+					return false;
 				}
+				return true;
 			}
-			catch (Exception ex)
-            {
-				Log.Write($"Exception in SubscribeToUserDataUpdatesAsync: {ex.Message}", _user.ID);
+			else
 				return false;
-			}
-			return true;
 		}
-		public bool KeepAliveSocket()
+		public bool KeepAlive(bool spotMarg = true)
         {
-			if (_socketSubscr == null) return false;
+			UpdateSubscription? ups = spotMarg ? _socketSubscrSpot : _socketSubscrMarg;
+			if (ups == null) return false;
 			try
 			{
-				_socketSubscr.ReconnectAsync();
+				ups.ReconnectAsync();
 			}
 			catch { 
 				return false;

@@ -74,24 +74,23 @@ namespace CaOrdersServer
 						BinanceStreamOrderUpdate ord = onOrderUpdateMessage.Data;
 
 						bool newOrUpdated = _user.UpdateOrder(ord, spotMarg);
-						if(newOrUpdated)
-							OnMessage?.Invoke($"New Order #{ord.Id} added for user {_user.Name} in state {ord.Status}");
+						if (newOrUpdated)
+							OnMessage?.Invoke($"Binance: New Order #{ord.Id} added for user {_user.Name} in state {ord.Status}");
 						else
-							OnMessage?.Invoke($"Order #{ord.Id} of user {_user.Name} is updated to {ord.Status}");
-
+							OnMessage?.Invoke($"Binance: Order #{ord.Id} of user {_user.Name} is updated to {ord.Status}");
 					},
 					null,
 					onAccountPositionMessage =>
 					{
 						BinanceStreamPositionsUpdate acc = onAccountPositionMessage.Data;
-						OnMessage?.Invoke($"Account position of user {_user.Name} is updated");
+						OnMessage?.Invoke($"Binance: Account position of user {_user.Name} is updated");
 
 						_user.UpdateAccount(acc.Balances.ToList());
 					},
 					onAccountBalanceUpdateMessage =>
 					{
 						BinanceStreamBalanceUpdate acc = onAccountBalanceUpdateMessage.Data;
-						OnMessage?.Invoke($"Account balance of user {_user.Name} is updated");
+						OnMessage?.Invoke($"Binance: Account balance of user {_user.Name} is updated");
 
 						_user.UpdateAccountBina();
 					}
@@ -103,11 +102,11 @@ namespace CaOrdersServer
 					else
 						_socketSubscrMarg = res.Data;
 
-					OnMessage?.Invoke($"{(spotMarg ? "Spot" : "Marg")} socket for {_user.Name} init ok");
+					OnMessage?.Invoke($"Binance: {(spotMarg ? "Spot" : "Marg")} socket for {_user.Name} init ok");
 				}
 				else
 				{
-					string msg = $"Error in SubscribeToUserDataUpdatesAsync: {res.Error?.Message}";
+					string msg = $"Binance: Error in SubscribeToUserDataUpdatesAsync: {res.Error?.Message}";
 					OnMessage?.Invoke(msg);
 					Log.Write(msg, _user.ID);
 					return false;

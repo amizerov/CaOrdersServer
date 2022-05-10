@@ -2,55 +2,67 @@
 using Microsoft.Extensions.Logging;
 using Kucoin.Net.Clients;
 using CryptoExchange.Net.Authentication;
+using CryptoExchange.Net.Sockets;
+using Kucoin.Net.Objects.Models.Spot.Socket;
 
 namespace CaOrdersServer
 {
 	public class KucoSocket
 	{
-		KucoinSocketClient? _socketClient;
+		public event Action<string>? OnMessage;
+
 		User _user;
+		ApiKey _apiKey;
+
+		KucoinSocketClient? _socketClient;
+		UpdateSubscription? _socketSubscrSpot;
+		UpdateSubscription? _socketSubscrMarg;
+
+		KucoinClient? _restClient;
+
+		string _listenKeySpot = "";
+		string _listenKeyMarg = "";
 
 		public KucoSocket(User usr)
 		{
 			_user = usr;
-			ApiKey? keys = _user.ApiKeys.Find(k => k.Exchange == "Kuco" && k.IsWorking == true);
-			if (keys == null) return;
+			_apiKey = _user.ApiKeys.Find(k => k.Exchange == "Kuco") ?? new();
 
-			string key = keys.Key;
-			string sec = keys.Secret;
-			string pas = keys.PassPhrase;
-
-			_socketClient = new KucoinSocketClient(new KucoinSocketClientOptions()
+			if (_apiKey.IsWorking)
 			{
-				LogLevel = LogLevel.Trace,
-				ApiCredentials = new KucoinApiCredentials(key, sec, pas)
-			});
+				_socketClient = new KucoinSocketClient(
+					new KucoinSocketClientOptions()
+					{
+						ApiCredentials = new KucoinApiCredentials(_apiKey.Key, _apiKey.Secret, _apiKey.Secret),
+						AutoReconnect = true,
+						LogLevel = LogLevel.Trace
+					});
+			}
 		}
-		public bool InitOrdersListenerSpot()
+		public bool InitOrdersListener(bool spotMarg = true)
 		{
 			bool b = false;
 			if (_socketClient == null) return b;
-			try
-			{
-				var res = _socketClient.SpotStreams.SubscribeToOrderUpdatesAsync(
-					onOrderData =>
-					{
-						Log.Write("onOrderData", _user.ID);
-					},
-					onTradeData =>
-					{
-						Log.Write("onTradeData", _user.ID);
-					}
-				).Result;
-				if (res.Success)
-					b = true;
-				else
-					Log.Write($"Error in SubscribeToUserDataUpdatesAsync: {res.Error?.Message}", _user.ID);
-			}
-			catch (Exception ex)
-			{
-				Log.Write($"Exception in SubscribeToUserDataUpdatesAsync: {ex.Message}", _user.ID);
-			}
+
+			var res = _socketClient.SpotStreams.SubscribeToOrderUpdatesAsync(
+				onOrderData =>
+				{
+					KucoinStreamOrderBaseUpdate ord = onOrderData.Data;
+
+					bool newOrUpdated = _user.UpdateOrder(ord);
+					Log.Write("onOrderData", _user.ID);
+				},
+				onTradeData =>
+				{
+					KucoinStreamOrderMatchUpdate trd = onTradeData.Data;
+					Log.Write("onTradeData", _user.ID);
+				}
+			).Result;
+			if (res.Success)
+				b = true;
+			else
+				Log.Write($"Kucoin Error in SubscribeToOrderUpdatesAsync: {res.Error?.Message}", _user.ID);
+
 			return b;
 		}
 		public void Dispose(bool setNull = true)

@@ -25,7 +25,7 @@ namespace CaOrdersServer
             bool res = false;
             if (_apiKey.ID > 0)
             {
-                _kucoClient = new KucoinClient(
+                _restClient = new KucoinClient(
                     new KucoinClientOptions()
                     {
                         ApiCredentials = new KucoinApiCredentials(_apiKey.Key!, _apiKey.Secret!, _apiKey.PassPhrase)
@@ -44,7 +44,7 @@ namespace CaOrdersServer
             List<KucoinAccount> balances = new();
             if (_apiKey.IsWorking)
             {
-                var r = _kucoClient!.SpotApi.Account.GetAccountsAsync().Result;
+                var r = _restClient!.SpotApi.Account.GetAccountsAsync().Result;
                 if (r != null && r.Success)
                 {
                     balances = r.Data.ToList();
@@ -52,13 +52,18 @@ namespace CaOrdersServer
             }
             return balances;
         }
-        public List<KucoinOrder> GetAllOrders(bool spotMarg = true)
+        public List<CaOrder> GetAllOrders(bool spotMarg = true)
         {
-            List<KucoinOrder> orders = new List<KucoinOrder>();
-            var res = _restClient.SpotApi.Trading.GetOrdersAsync().Result;
-            if (res.Success)
+            List<CaOrder> orders = new();
+            var r = _restClient.SpotApi.Trading.GetOrdersAsync().Result;
+            if (r.Success)
             {
-                orders = res.Data.Items.ToList();
+                foreach (var o in r.Data.Items)
+                {
+                    bool sm = o.TradeType == TradeType.SpotTrade;
+                    if(sm == spotMarg)
+                        orders.Add(new CaOrder(o, _user.ID, spotMarg));
+                }
             }
             return orders;
         }

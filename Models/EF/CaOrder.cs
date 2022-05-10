@@ -1,6 +1,7 @@
 using Binance.Net.Enums;
 using Binance.Net.Objects.Models.Spot;
 using Binance.Net.Objects.Models.Spot.Socket;
+using Huobi.Net.Objects.Models;
 using Kucoin.Net.Objects.Models.Spot;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
@@ -91,7 +92,45 @@ namespace CaOrdersServer
             state = 
                 (bool)o.IsActive! ? (int)OState.Open : (int)OState.Filled;
         }
-       public bool Save()
+        public CaOrder(HuobiOrder o, int uid, bool sm = true)
+        {
+            usr_id = uid;
+
+            ord_id = o.Id.ToString();
+            exchange = 3; // 1 - Bina, 2 - Kuco, 3 - Huob
+            symbol = o.Symbol.ToUpper();
+            spotmar = sm;
+            buysel = o.Side == Huobi.Net.Enums.OrderSide.Buy;
+            price = o.Price;
+            qty = o.Quantity;
+            dt_create = o.CreateTime;
+            state = o.State == Huobi.Net.Enums.OrderState.Created ? (int)OState.Open :
+                    o.State == Huobi.Net.Enums.OrderState.Filled ? (int)OState.Filled :
+                    o.State == Huobi.Net.Enums.OrderState.Submitted ? (int)OState.Open :
+                    o.State == Huobi.Net.Enums.OrderState.Rejected ? (int)OState.Canceled :
+                    o.State == Huobi.Net.Enums.OrderState.Canceled ? (int)OState.Canceled :
+                    o.State == Huobi.Net.Enums.OrderState.PartiallyFilled ? (int)OState.Open : (int)OState.NotFound;
+        }
+        public CaOrder(HuobiOpenOrder o, int uid, bool sm = true)
+        {
+            usr_id = uid;
+
+            ord_id = o.Id.ToString();
+            exchange = 3;
+            symbol = o.Symbol;
+            spotmar = sm;
+            buysel = o.Side == Huobi.Net.Enums.OrderSide.Buy;
+            price = o.Price;
+            qty = o.Quantity;
+            dt_create = o.CreateTime;
+            state = o.State == Huobi.Net.Enums.OrderState.Created ? (int)OState.Open :
+                    o.State == Huobi.Net.Enums.OrderState.Filled ? (int)OState.Filled :
+                    o.State == Huobi.Net.Enums.OrderState.Submitted ? (int)OState.Open :
+                    o.State == Huobi.Net.Enums.OrderState.Rejected ? (int)OState.Canceled :
+                    o.State == Huobi.Net.Enums.OrderState.Canceled ? (int)OState.Canceled :
+                    o.State == Huobi.Net.Enums.OrderState.PartiallyFilled ? (int)OState.Open : (int)OState.NotFound;
+        }
+        public bool Save()
         {/* —оздает новый или обновл€ет существующий ордер
           */
             bool newOrUpdated = true;

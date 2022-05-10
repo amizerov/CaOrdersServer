@@ -1,5 +1,3 @@
-using System.Linq;
-
 namespace CaOrdersServer
 {
     public partial class FrmMain : Form
@@ -8,6 +6,8 @@ namespace CaOrdersServer
        */
         // Все юзеры сразу создаются и проверяют ключи
         Users users = new();
+        bool spotMarg = true;
+
         public FrmMain()
         {
             InitializeComponent();
@@ -35,9 +35,9 @@ namespace CaOrdersServer
         {   
             foreach(User u in users)
             {
-                // Проверка доступа по ключам пользователя на всех биржах
+                // Проверка доступа по ключам пользователей на всех биржах,
                 // результат сохраняется в БД и доступен через
-                // u.ApiKeys.Find(k => k.Exchange == "Bina").IsWorking
+                // u.ApiKeys.Find(k => k.Exchange == "Bina").IsWorking.
                 // Значение свойства IsWorking читается напрямую из БД
                 u.CheckApiKeys();
             }
@@ -47,9 +47,9 @@ namespace CaOrdersServer
         {
             foreach (User u in users)
             {
-                u.CheckOrdersBinaAsync();
-                //u.CheckOrdersAsynk(2);
-                //u.CheckOrdersAsynk(3);
+                u.CheckOrdersBinaAsync(spotMarg);
+                u.CheckOrdersKucoAsync(spotMarg);
+                u.CheckOrdersHuobAsync(spotMarg);
             }
         }
 
@@ -57,7 +57,9 @@ namespace CaOrdersServer
         {
             foreach (User u in users)
             {
-                u.CheckOrdersBinaAsync(false);
+                u.CheckOrdersBinaAsync(!spotMarg);
+                u.CheckOrdersKucoAsync(!spotMarg);
+                u.CheckOrdersHuobAsync(!spotMarg);
             }
         }
 
@@ -65,8 +67,9 @@ namespace CaOrdersServer
         {
             foreach (User u in users)
             {
-                u.StartListenSpotBina();
-                
+                u.StartListenOrdersBina(spotMarg);
+                u.StartListenOrdersBina(!spotMarg);
+
                 /*
                 if(u.StartListenSpotKuco())
                     txtLog.Text += "\r\n[" + DateTime.Now.ToString("hh:mm:ss") + "] " + u.Name + " - Start listen spot Kuco";

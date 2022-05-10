@@ -2,6 +2,7 @@
 using Huobi.Net.Clients;
 using Huobi.Net.Objects;
 using Huobi.Net.Enums;
+using Huobi.Net.Objects.Models;
 
 namespace CaOrdersServer
 {
@@ -13,7 +14,6 @@ namespace CaOrdersServer
         ApiKey _apiKey;
         HuobiClient _restClient = new();
 
-
         public HuobCaller(User usr)
         {
             _user = usr;
@@ -23,95 +23,64 @@ namespace CaOrdersServer
         }
         public bool CheckApiKey()
         {
-            bool b = false;
-            if (String.IsNullOrEmpty(_key) || String.IsNullOrEmpty(_sec)) return b;
-
-            HuobiClient client = new HuobiClient(
-                new HuobiClientOptions
-                {
-                    ApiCredentials = new ApiCredentials(_key!, _sec!)
-                });
-            var r = client.SpotApi.Account.GetAccountsAsync().Result;
-            if (r != null && r.Success)
+            bool res = false;
+            if (_apiKey.ID > 0)
             {
-                b = true;
+                _restClient = new HuobiClient(
+                    new HuobiClientOptions()
+                    {
+                        ApiCredentials = new ApiCredentials(_apiKey.Key!, _apiKey.Secret!)
+                    });
+                // Если получен доступ к балансам, ключ считается рабочим
+                List<HuobiBalance> bs = GetBalances();
+                res = bs.Count > 0;
+
+                _apiKey.IsWorking = res;
             }
-            return b;
+            OnProgress?.Invoke($"{_user.Name} - {_apiKey.Exchange} - IsWorking: {_apiKey.IsWorking}");
+            return res;
         }
-        public void CheckOrdersSpot()
+        public List<HuobiBalance> GetBalances()
         {
-            if (_key == null) return;
-            OnProgress?.Invoke($"Huob({_user.Name}): check spot orders start");
-
-            HuobiClient client = new HuobiClient(
-                new HuobiClientOptions()
-                {
-                    ApiCredentials = new ApiCredentials(_key!, _sec!)
-                });
-
-           CaOrders orders = new CaOrders(_user.ID, 3/*Huob*/);
-           var ro = client.SpotApi.Trading.GetOpenOrdersAsync().Result;
-            if (ro.Success)
+            List<HuobiBalance> balances = new();
+            if (_apiKey.IsWorking)
             {
-                foreach (var o in ro.Data)
+                var res = _restClient!.SpotApi.Account.GetAccountsAsync().Result;
+                foreach (var acc in res.Data)
                 {
-                    CaOrder order = new CaOrder();
-                    order.usr_id = _user.ID;
-
-                    order.ord_id = o.Id.ToString();
-                    order.exchange = 3; // 1 - Bina, 2 - Kuco, 3 - Huob
-                    order.symbol = o.Symbol.ToUpper();
-                    order.spotmar = true;
-                    order.buysel = o.Side == OrderSide.Buy;
-                    order.price = o.Price;
-                    order.qty = o.Quantity;
-                    order.dt_create = o.CreateTime;
-                    order.state = (int)OState.Open;
-
-                    if (o.State == OrderState.Filled)
-                        order.dt_exec = o.CompleteTime;
-
-                    order.Save();
-                    orders.Add(order);
-
-                    OnProgress?.Invoke($"Huob({_user.Name}): Opened spot order {o.Id} - {o.Symbol} - {o.Price}");
+                    var r = _restClient!.SpotApi.Account.GetBalancesAsync(acc.Id).Result;
+                    if (r != null && r.Success)
+                    {
+                        balances.AddRange(r.Data.ToList());
+                    }
                 }
             }
-            var r = client.SpotApi.Trading.GetHistoricalOrdersAsync().Result;
-            if (r.Success)
+            return balances;
+        }
+
+        public List<CaOrder> GetAllOrders(bool spotMarg = true)
+        {
+            List<CaOrder> orders = new();
+            if (_apiKey.IsWorking)
             {
-                foreach (var o in r.Data)
+                var ro = _restClient.SpotApi.Trading.GetOpenOrdersAsync().Result;
+                if (ro.Success)
                 {
-                    CaOrder order = new CaOrder();
-                    order.usr_id = _user.ID;
-
-                    order.ord_id = o.Id.ToString();
-                    order.exchange = 3; // 1 - Bina, 2 - Kuco, 3 - Huob
-                    order.symbol = o.Symbol;
-                    order.spotmar = true;
-                    order.buysel = o.Side == OrderSide.Buy;
-                    order.price = o.Price;
-                    order.qty = o.Quantity;
-                    order.dt_create = o.CreateTime;
-                    order.state = o.State == OrderState.Created ? (int)OState.Open :
-                                    o.State == OrderState.Filled ? (int)OState.Filled :
-                                    o.State == OrderState.Submitted ? (int)OState.Open :
-                                    o.State == OrderState.Rejected ? (int)OState.Canceled :
-                                    o.State == OrderState.Canceled ? (int)OState.Canceled :
-                                    o.State == OrderState.PartiallyFilled ? (int)OState.Open : (int)OState.NotFound;
-
-                    if (o.State == OrderState.Filled)
-                        order.dt_exec = o.CompleteTime;
-
-                    order.Save();
-                    orders.Add(order);
-
-                    OnProgress?.Invoke($"Huob({_user.Name}): Order {o.Id} - {o.Symbol} - state = {o.State}");
+                    foreach (var o in ro.Data)
+                    {
+                        orders.Add(new CaOrder(o, _user.ID, spotMarg));
+                    }
                 }
+                var r = _restClient.SpotApi.Trading.GetHistoricalOrdersAsync().Result;
+                if (r.Success)
+                {
+                    foreach (var o in r.Data)
+                    {
+                        orders.Add(new CaOrder(o, _user.ID, spotMarg));
+                    }
+;                }
             }
-            orders.Update();
-
-            OnProgress?.Invoke($"Huob({_user.Name}): spot orders done");
+            return orders;
         }
     }
 }

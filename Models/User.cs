@@ -36,9 +36,9 @@ namespace CaOrdersServer
                 ApiKey key = new ApiKey(k);
                 ApiKeys.Add(key);
             }
-            _binaCaller = new(this); _binaCaller.OnProgress += OnOrdersProgress;
-            _kucoCaller = new(this);
-            _huobCaller = new(this); _huobCaller.OnProgress += OnOrdersProgress;
+            _binaCaller = new(this); _binaCaller.OnProgress += OnCallerProgress;
+            _kucoCaller = new(this); _kucoCaller.OnProgress += OnCallerProgress;
+            _huobCaller = new(this); _huobCaller.OnProgress += OnCallerProgress;
 ;        }
 
         // Socket used ------------>
@@ -104,12 +104,10 @@ namespace CaOrdersServer
            */
             Task.Run(() =>
             {
-                List<BinanceOrder> orders = _binaCaller.GetAllOrders(spotMarg);
+                List<CaOrder> orders = _binaCaller.GetAllOrders(spotMarg);
                 foreach (var o in orders)
                 {
-                    CaOrder order = new CaOrder(o, ID);
-                    order.Save();
-                    OnProgress?.Invoke($"Bina({Name}): {(order.spotmar ? "SPOT" : "MARG")} Order {o.Id} - {o.Symbol} - state = {o.Status} / {order.state}");
+                    bool newOrUpdated = o.Save();
                 }
             });
         }
@@ -121,30 +119,30 @@ namespace CaOrdersServer
            */
             Task.Run(() =>
             {
-                List<KucoinOrder> orders = _kucoCaller.GetAllOrders(spotMarg);
+                List<CaOrder> orders = _kucoCaller.GetAllOrders(spotMarg);
                 foreach (var o in orders)
                 {
-                    CaOrder order = new CaOrder(o, ID);
-                    order.Save();
-                    OnProgress?.Invoke($"Kuco({Name}): {(order.spotmar ? "SPOT" : "MARG")} Order {o.Id} - {o.Symbol} - state = {((bool)o.IsActive ? "Active" : "Done")} / {order.state}");
+                    bool newOrUpdated = o.Save();
                 }
             });
         }
-
-        public void CheckOrdersKucoAsync(bool spotmarg = true, bool NewOnly = false)
+        public void CheckOrdersHuobAsync(bool spotMarg = true)
         {
-            Task.Run(() => _kucoCaller.CheckOrdersSpot());
-        }
-        public void CheckOrdersHuobAsync(bool spotmarg = true, bool NewOnly = false)
-        {
-            Task.Run(() => _huobCaller.CheckOrdersSpot());
+            Task.Run(() => 
+            { 
+                List<CaOrder> orders = _huobCaller.GetAllOrders(spotMarg);
+                foreach(var o in orders)
+                {
+                    bool newOrUpdated = o.Save();
+                }
+            });
         }
         public bool StartListenOrdersBina(bool spotMarg = true)
         {
             bool b = false;
             
             _binaSocket = new BinaSocket(this);
-            _binaSocket.OnMessage += OnOrdersProgress;
+            _binaSocket.OnMessage += OnCallerProgress;
             b = _binaSocket.InitOrdersListener(spotMarg);
 
             if(b)
@@ -169,7 +167,7 @@ namespace CaOrdersServer
             _huobSocket = new HuobSocket(this);
             return _huobSocket.InitOrdersListenerSpot();
         }
-        void OnOrdersProgress(string msg) => OnProgress?.Invoke(msg);
+        void OnCallerProgress(string msg) => OnProgress?.Invoke(msg);
         
     }
 
@@ -188,9 +186,6 @@ namespace CaOrdersServer
                 user.OnProgress += OnUserProgress;
             }
         }
-        void OnUserProgress(string msg)
-        {
-            OnProgress?.Invoke(msg);
-        }
+        void OnUserProgress(string msg) => OnProgress?.Invoke(msg);
     }
  }

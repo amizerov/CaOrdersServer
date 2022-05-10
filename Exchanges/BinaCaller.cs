@@ -54,9 +54,9 @@ namespace CaOrdersServer
             }
             return balances;
         }
-        public List<BinanceOrder> GetAllOrders(bool spotMarg = true)
+        public List<CaOrder> GetAllOrders(bool spotMarg = true)
         {
-            List<BinanceOrder> orders = new List <BinanceOrder>();
+            List<CaOrder> orders = new();
             if (_apiKey.IsWorking)
             {
                 foreach (var symbo in GetSymbols())
@@ -65,9 +65,10 @@ namespace CaOrdersServer
                                      : _restClient!.SpotApi.Trading.GetMarginOrdersAsync(symbo).Result;
                     if (r.Success)
                     {
-                        List<BinanceOrder> os = r.Data.ToList();
-                        if (os.Count() > 0)
-                            orders.AddRange(os);
+                        foreach(var o in r.Data)
+                        {
+                            orders.Add(new CaOrder(o, _user.ID, spotMarg));
+                        }
                     }
                 }
             }

@@ -2,30 +2,44 @@
 using Microsoft.Extensions.Logging;
 using Huobi.Net.Clients;
 using CryptoExchange.Net.Authentication;
+using Huobi.Net.Objects.Models.Socket;
+using CryptoExchange.Net.Sockets;
 
 namespace CaOrdersServer
 {
 	public class HuobSocket
 	{
-		HuobiSocketClient? _socketClient;
+		public event Action<string>? OnMessage;
+
 		User _user;
+		ApiKey _apiKey;
+
+		HuobiSocketClient? _socketClient;
+		UpdateSubscription? _socketSubscrSpot;
+		UpdateSubscription? _socketSubscrMarg;
+
+		HuobiClient? _restClient;
+
+		string _listenKeySpot = "";
+		string _listenKeyMarg = "";
 
 		public HuobSocket(User usr)
 		{
 			_user = usr;
-			ApiKey? keys = _user.ApiKeys.Find(k => k.Exchange == "Huob" && k.IsWorking == true);
-			if (keys == null) return;
+			_apiKey = _user.ApiKeys.Find(k => k.Exchange == "Kuco") ?? new();
 
-			string key = keys.Key;
-			string sec = keys.Secret;
-
-			_socketClient = new HuobiSocketClient(new HuobiSocketClientOptions()
+			if (_apiKey.IsWorking)
 			{
-				LogLevel = LogLevel.Trace,
-				ApiCredentials = new ApiCredentials(key, sec)
-			});
+				_socketClient = new HuobiSocketClient(
+					new HuobiSocketClientOptions()
+					{
+						ApiCredentials = new ApiCredentials(_apiKey.Key, _apiKey.Secret),
+						AutoReconnect = true,
+						LogLevel = LogLevel.Trace
+					});
+			}
 		}
-		public bool InitOrdersListenerSpot()
+		public bool InitOrdersListener(bool spotMarg = true)
 		{
 			bool b = false;
 			if (_socketClient == null) return b;
@@ -35,7 +49,10 @@ namespace CaOrdersServer
 					null,
 					onOrderUpdateMessage =>
 					{
-						Log.Write("OrderUpdate", _user.ID);
+						HuobiSubmittedOrderUpdate ord = onOrderUpdateMessage.Data;
+						new CaOrder(ord, _user.ID).Save();
+
+						OnMessage?.Invoke($"Huobi: Order({ord.Symbol}/{ord.Side}) #{ord.OrderId} is update to {ord.Status} for User {_user.Name}");
 					},
 					onOcoOrderUpdateMessage =>
 					{

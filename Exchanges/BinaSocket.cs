@@ -73,26 +73,27 @@ namespace CaOrdersServer
 					{
 						BinanceStreamOrderUpdate ord = onOrderUpdateMessage.Data;
 
-						bool newOrUpdated = _user.UpdateOrder(ord, spotMarg);
+						bool newOrUpdated = new CaOrder(ord, _user.ID, spotMarg).Save();
 						if (newOrUpdated)
-							OnMessage?.Invoke($"Binance: New Order #{ord.Id} added for user {_user.Name} in state {ord.Status}");
+							OnMessage?.Invoke($"Binance({_user.Name}): New Order #{ord.Id} added in state {ord.Status}");
 						else
-							OnMessage?.Invoke($"Binance: Order #{ord.Id} of user {_user.Name} is updated to {ord.Status}");
+							OnMessage?.Invoke($"Binance({_user.Name}): Order #{ord.Id} updated to {ord.Status}");
 					},
 					null,
 					onAccountPositionMessage =>
 					{
 						BinanceStreamPositionsUpdate acc = onAccountPositionMessage.Data;
-						OnMessage?.Invoke($"Binance: Account position of user {_user.Name} is updated");
+						OnMessage?.Invoke($"Binance({_user.Name}): Account position updated");
 
-						_user.UpdateAccount(acc.Balances.ToList());
+						foreach (BinanceStreamBalance b in acc.Balances.ToList())
+						{
+							new CaBalance(b, _user.ID).Update();
+						}
 					},
 					onAccountBalanceUpdateMessage =>
 					{
 						BinanceStreamBalanceUpdate acc = onAccountBalanceUpdateMessage.Data;
 						OnMessage?.Invoke($"Binance: Account balance of user {_user.Name} is updated");
-
-						_user.UpdateAccountBina();
 					}
 				).Result;
 				if (res.Success)
@@ -103,6 +104,8 @@ namespace CaOrdersServer
 						_socketSubscrMarg = res.Data;
 
 					OnMessage?.Invoke($"Binance: {(spotMarg ? "Spot" : "Marg")} socket for {_user.Name} init ok");
+
+					Task.Run(() => KeepAlive());
 				}
 				else
 				{
@@ -116,18 +119,11 @@ namespace CaOrdersServer
 			else
 				return false;
 		}
-		public bool KeepAlive(bool spotMarg = true)
+		private void KeepAlive()
         {
-			UpdateSubscription? ups = spotMarg ? _socketSubscrSpot : _socketSubscrMarg;
-			if (ups == null) return false;
-			try
-			{
-				ups.ReconnectAsync();
-			}
-			catch { 
-				return false;
-			}
-			return true;
+			Thread.Sleep(15*60*1000);
+			_socketSubscrSpot?.ReconnectAsync();
+			_socketSubscrMarg?.ReconnectAsync();
 		}
 		public void Dispose(bool setNull = true)
 		{

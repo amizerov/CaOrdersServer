@@ -48,23 +48,42 @@ namespace CaOrdersServer
 				onOrderData =>
 				{
 					KucoinStreamOrderBaseUpdate ord = onOrderData.Data;
+					new CaOrder(ord, _user.ID).Save();
 
-					bool newOrUpdated = _user.UpdateOrder(ord);
-					Log.Write("onOrderData", _user.ID);
+					OnMessage?.Invoke($"Kucoin: Order({ord.Symbol}/{ord.Side}) #{ord.OrderId} is update to {ord.Status} for User {_user.Name}");
 				},
 				onTradeData =>
 				{
 					KucoinStreamOrderMatchUpdate trd = onTradeData.Data;
-					Log.Write("onTradeData", _user.ID);
+					OnMessage?.Invoke($"Kucoin: Trade({trd.Symbol}/{trd.Side}) #{trd.OrderId} is update to {trd.Status} for User {_user.Name}");
 				}
 			).Result;
 			if (res.Success)
+			{
 				b = true;
+				_socketSubscrSpot = res.Data;
+				OnMessage?.Invoke($"Kucoin SubscribeToOrderUpdates is Ok");
+			}
 			else
-				Log.Write($"Kucoin Error in SubscribeToOrderUpdatesAsync: {res.Error?.Message}", _user.ID);
+				OnMessage?.Invoke($"Kucoin Error in SubscribeToOrderUpdates: {res.Error?.Message}");
 
 			return b;
 		}
+		public bool KeepAlive(bool spotMarg = true)
+		{
+			UpdateSubscription? ups = spotMarg ? _socketSubscrSpot : _socketSubscrMarg;
+			if (ups == null) return false;
+			try
+			{
+				ups.ReconnectAsync();
+			}
+			catch
+			{
+				return false;
+			}
+			return true;
+		}
+
 		public void Dispose(bool setNull = true)
 		{
 			if (_socketClient != null)

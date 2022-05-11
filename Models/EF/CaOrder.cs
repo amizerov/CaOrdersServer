@@ -2,7 +2,9 @@ using Binance.Net.Enums;
 using Binance.Net.Objects.Models.Spot;
 using Binance.Net.Objects.Models.Spot.Socket;
 using Huobi.Net.Objects.Models;
+using Huobi.Net.Objects.Models.Socket;
 using Kucoin.Net.Objects.Models.Spot;
+using Kucoin.Net.Objects.Models.Spot.Socket;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
@@ -35,6 +37,8 @@ namespace CaOrdersServer
         public DateTime? dt_exec { get; set; }
         public DateTime? dtu { get; set; }
         public CaOrder() { }
+
+        //---------------------------------
         public CaOrder(BinanceOrder o, int uid, bool sm = true /*spot, false - marg*/)
         {
             usr_id = uid;
@@ -77,6 +81,7 @@ namespace CaOrdersServer
 
             if (o.Status == OrderStatus.Filled) dt_exec = o.UpdateTime;
         }
+        //---------------------------------
         public CaOrder(KucoinOrder o, int uid, bool sm = true /*spot, false - marg*/)
         {
             usr_id = uid;
@@ -92,6 +97,24 @@ namespace CaOrdersServer
             state = 
                 (bool)o.IsActive! ? (int)OState.Open : (int)OState.Filled;
         }
+        public CaOrder(KucoinStreamOrderBaseUpdate o, int uid, bool sm = true)
+        {
+            usr_id = uid;
+
+            ord_id = o.OrderId;
+            exchange = 2;
+            symbol = o.Symbol;
+            spotmar = sm;
+            buysel = o.Side == Kucoin.Net.Enums.OrderSide.Buy;
+            price = o.Price;
+            qty = o.Quantity;
+            dt_create = o.OrderTime;
+            state =
+                o.Status == Kucoin.Net.Enums.ExtendedOrderStatus.Open ? (int)OState.Open :
+                o.Status == Kucoin.Net.Enums.ExtendedOrderStatus.Done ? (int)OState.Filled :
+                o.UpdateType == Kucoin.Net.Enums.MatchUpdateType.Canceled ? (int)OState.Canceled : (int)OState.Open;
+        }
+        //---------------------------------
         public CaOrder(HuobiOrder o, int uid, bool sm = true)
         {
             usr_id = uid;
@@ -130,6 +153,26 @@ namespace CaOrdersServer
                     o.State == Huobi.Net.Enums.OrderState.Canceled ? (int)OState.Canceled :
                     o.State == Huobi.Net.Enums.OrderState.PartiallyFilled ? (int)OState.Open : (int)OState.NotFound;
         }
+        public CaOrder(HuobiSubmittedOrderUpdate o, int uid, bool sm = true)
+        {
+            usr_id = uid;
+
+            ord_id = o.OrderId.ToString();
+            exchange = 3;
+            symbol = o.Symbol;
+            spotmar = sm;
+            buysel = o.Side == Huobi.Net.Enums.OrderSide.Buy;
+            price = o.Price;
+            qty = (decimal)o.Quantity!;
+            dt_create = o.CreateTime;
+            state = o.Status == Huobi.Net.Enums.OrderState.Created ? (int)OState.Open :
+                    o.Status == Huobi.Net.Enums.OrderState.Filled ? (int)OState.Filled :
+                    o.Status == Huobi.Net.Enums.OrderState.Submitted ? (int)OState.Open :
+                    o.Status == Huobi.Net.Enums.OrderState.Rejected ? (int)OState.Canceled :
+                    o.Status == Huobi.Net.Enums.OrderState.Canceled ? (int)OState.Canceled :
+                    o.Status == Huobi.Net.Enums.OrderState.PartiallyFilled ? (int)OState.Open : (int)OState.NotFound;
+        }        
+        
         public bool Save()
         {/* Создает новый или обновляет существующий ордер
           */
@@ -162,12 +205,11 @@ namespace CaOrdersServer
                 return newOrUpdated;
             }
         }
-        public static bool UpdateStatus(BinanceStreamOrderUpdate bo, int uid, bool spotMarg)
-        {
-            CaOrder order = new CaOrder(bo, uid, spotMarg);
-            return order.Save();
-        }
     }
+    ///////////////////////////////////////////
+    /// <summary>
+    /// Класс не используется нигде
+    /// </summary>
     public class CaOrders : List<CaOrder>
     {
         // Список содержит все ордера юзера, полученные с биржи

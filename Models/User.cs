@@ -1,30 +1,35 @@
 ﻿using am.BL;
-using Binance.Net.Objects.Models.Spot;
-using Binance.Net.Objects.Models.Spot.Socket;
-using Kucoin.Net.Objects.Models.Spot;
 using System.Data;
 
 namespace CaOrdersServer
 {
     public class User
     {
+        public event Action<string>? OnProgress;
+
         public int ID;
         public string Name;
         public string Email;
         public List<ApiKey> ApiKeys = new();
 
-        BinaSocket? _binaSocket;
-        KucoSocket? _kucoSocket;
-        HuobSocket? _huobSocket;
+        private BinaSocket _binaSocket;
+        private KucoSocket _kucoSocket;
+        private HuobSocket _huobSocket;
 
-        BinaCaller _binaCaller;
-        KucoCaller _kucoCaller;
-        HuobCaller _huobCaller;
-
-        public event Action<string>? OnProgress;
+        private BinaCaller _binaCaller;
+        private KucoCaller _kucoCaller;
+        private HuobCaller _huobCaller;
 
         public User(DataRow r)
         {
+            _binaCaller = new(this); _binaCaller.OnProgress += OnCallerProgress;
+            _kucoCaller = new(this); _kucoCaller.OnProgress += OnCallerProgress;
+            _huobCaller = new(this); _huobCaller.OnProgress += OnCallerProgress;
+            
+            _binaSocket = new(this); _binaSocket.OnMessage += OnSpcketProgress;
+            _kucoSocket = new(this); _kucoSocket.OnMessage += OnSpcketProgress;
+            _huobSocket = new(this); _huobSocket.OnMessage += OnSpcketProgress;
+
             ID = G._I(r["id"]);
             Name = G._S(r["Name"]);
             Email = G._S(r["Email"]);
@@ -34,68 +39,15 @@ namespace CaOrdersServer
             foreach (DataRow k in dt.Rows)
             {
                 ApiKey key = new ApiKey(k);
+                if(key.Exchange == "Bina") _binaCaller.CheckApiKey();
+                if(key.Exchange == "Kuco") _kucoCaller.CheckApiKey();
+                if(key.Exchange == "Huob") _huobCaller.CheckApiKey();
+
                 ApiKeys.Add(key);
             }
-            _binaCaller = new(this); _binaCaller.OnProgress += OnCallerProgress;
-            _kucoCaller = new(this); _kucoCaller.OnProgress += OnCallerProgress;
-            _huobCaller = new(this); _huobCaller.OnProgress += OnCallerProgress;
 ;        }
 
-        // Socket used ------------>
-        public void UpdateAccountBina()
-        {/******************************************************* 
-          * Вызывается при изменении балансов на счету Бинанса
-          * если подписались на событие UserDataUpdates в BinaSoket
-           */
-            List<BinanceBalance> balances = _binaCaller.GetBalances();
-
-            foreach (BinanceBalance b in balances)
-            {
-                CaBalance userBalanceOnBinance = new CaBalance(b, ID);
-                userBalanceOnBinance.Update();
-            }        
-        }
-        public void UpdateAccount(List<BinanceStreamBalance> balances)
-        {
-            foreach (BinanceStreamBalance b in balances)
-            {
-                CaBalance userBalanceOnBinance = new CaBalance(b, ID);
-                userBalanceOnBinance.Update();
-            }
-        }
-        public bool UpdateOrder(BinanceStreamOrderUpdate ord, bool spotMarg)
-        {/******************************************************* 
-          * Вызывается при изменении изменении состояния ордера на Бинанса
-          * если подписались на событие UserDataUpdates в BinaSoket
-           */
-            return CaOrder.UpdateStatus(ord, ID, spotMarg);
-        }
-        //-------------------------<
-
         // One time call functions ->
-        public void CheckApiKeys()
-        {/******************************************************* 
-          * Проверка ключей доступа всех бирж
-           */
-            foreach (var key in ApiKeys)
-            {
-                bool b = false;
-                switch (key.Exchange)
-                {
-                    case "Bina":
-                        b = _binaCaller.CheckApiKey();
-                        break;
-                    case "Kuco":
-                        b = _kucoCaller.CheckApiKey();
-                        break;
-                    case "Huob":
-                        b = _huobCaller.CheckApiKey();
-                        break;
-                }
-                key.IsWorking = b;
-                key.CheckedAt = DateTime.Now;
-            }
-        }
         public void CheckOrdersBinaAsync(bool spotMarg = true)
         {/******************************************************* 
           * Проверка ордеров на Бинансе, вызывается только один раз при запуске программы,
@@ -137,38 +89,25 @@ namespace CaOrdersServer
                 }
             });
         }
+        // <--------------------------
+
         public bool StartListenOrdersBina(bool spotMarg = true)
         {
-            bool b = false;
-            
-            _binaSocket = new BinaSocket(this);
-            _binaSocket.OnMessage += OnCallerProgress;
-            b = _binaSocket.InitOrdersListener(spotMarg);
+            return _binaSocket.InitOrdersListener(spotMarg); ;
+        }
+        public bool StartListenOrdersKuco(bool spotMarg = true)
+        {
 
-            if(b)
-                OnProgress?.Invoke(Name + " - Start listen spot Bina");
-            else
-                OnProgress?.Invoke(Name + " - Error listen spot Bina");
+            return _kucoSocket.InitOrdersListener();
+        }
+        public bool StartListenOrdersHuob(bool spotMarg = true)
+        {
 
-            return b;
+            return _huobSocket.InitOrdersListener();
         }
-        public bool KeepAliveSpotBina()
-        {
-            if(_binaSocket == null) return false;
-            return _binaSocket.KeepAlive();
-        }
-        public bool StartListenSpotKuco()
-        {
-            _kucoSocket = new KucoSocket(this);
-            return _kucoSocket.InitOrdersListenerSpot();
-        }
-        public bool StartListenSpotHuob()
-        {
-            _huobSocket = new HuobSocket(this);
-            return _huobSocket.InitOrdersListenerSpot();
-        }
+
         void OnCallerProgress(string msg) => OnProgress?.Invoke(msg);
-        
+        void OnSpcketProgress(string msg) => OnProgress?.Invoke(msg);
     }
 
     public class Users : List<User>

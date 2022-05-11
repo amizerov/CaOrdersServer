@@ -70,17 +70,8 @@ namespace CaOrdersServer
                 u.StartListenOrdersBina(spotMarg);
                 u.StartListenOrdersBina(!spotMarg);
 
-                /*
-                if(u.StartListenSpotKuco())
-                    txtLog.Text += "\r\n[" + DateTime.Now.ToString("hh:mm:ss") + "] " + u.Name + " - Start listen spot Kuco";
-                else
-                    txtLog.Text += "\r\n[" + DateTime.Now.ToString("hh:mm:ss") + "] " + u.Name + " - Error listen spot Kuco";
-                
-                if(u.StartListenSpotHuob())
-                    txtLog.Text += "\r\n[" + DateTime.Now.ToString("hh:mm:ss") + "] " + u.Name + " - Start listen spot Huob";
-                else
-                    txtLog.Text += "\r\n[" + DateTime.Now.ToString("hh:mm:ss") + "] " + u.Name + " - Error listen spot Huob";
-                */
+                u.StartListenOrdersKuco();
+                u.StartListenOrdersHuob();
             }
         }
         void OnProgress(string msg)
@@ -102,7 +93,7 @@ namespace CaOrdersServer
         {
             foreach (User u in users)
             {
-                u.KeepAliveSpotBina();
+                //u.KeepAliveSpotBina();
             }
         }
     }

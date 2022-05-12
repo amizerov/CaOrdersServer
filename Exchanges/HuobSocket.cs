@@ -7,7 +7,7 @@ using CryptoExchange.Net.Sockets;
 
 namespace CaOrdersServer
 {
-	public class HuobSocket
+	public class HuobSocket : ApiSocket
 	{
 		public event Action<string>? OnMessage;
 
@@ -15,13 +15,7 @@ namespace CaOrdersServer
 		ApiKey _apiKey;
 
 		HuobiSocketClient? _socketClient;
-		UpdateSubscription? _socketSubscrSpot;
-		UpdateSubscription? _socketSubscrMarg;
-
-		HuobiClient? _restClient;
-
-		string _listenKeySpot = "";
-		string _listenKeyMarg = "";
+		UpdateSubscription? _socketSubscr;
 
 		public HuobSocket(User usr)
 		{
@@ -39,7 +33,7 @@ namespace CaOrdersServer
 					});
 			}
 		}
-		public bool InitOrdersListener(bool spotMarg = true)
+		public bool InitOrdersListener(int minutesToReconnect = 20)
 		{
 			bool b = false;
 			if (_socketClient == null) return b;
@@ -50,33 +44,42 @@ namespace CaOrdersServer
 					onOrderUpdateMessage =>
 					{
 						HuobiSubmittedOrderUpdate ord = onOrderUpdateMessage.Data;
-						new CaOrder(ord, _user.ID).Save();
+						new CaOrder(ord, _user.ID).Update();
 
 						OnMessage?.Invoke($"Huobi: Order({ord.Symbol}/{ord.Side}) #{ord.OrderId} is update to {ord.Status} for User {_user.Name}");
-					},
-					onOcoOrderUpdateMessage =>
-					{
-						Log.Write("OcoOrderUpdate", _user.ID);
-					},
-					onAccountPositionMessage =>
-					{
-						Log.Write("AccountPosition", _user.ID);
-					},
-					onAccountBalanceUpdateMessage =>
-					{
-						Log.Write("AccountBalanceUpda", _user.ID);
 					}
 				).Result;
 				if (res.Success)
+				{
+					_socketSubscr = res.Data;
+					OnMessage?.Invoke($"Huobi: socket for {_user.Name} init ok");
+
+					Task.Run(() => KeepAlive(minutesToReconnect));
+
 					b = true;
+				}
 				else
-					Log.Write($"Error in SubscribeToUserDataUpdatesAsync: {res.Error?.Message}", _user.ID);
+				{
+					string msg = $"Huobi: Error in SubscribeToUserDataUpdatesAsync: {res.Error?.Message}";
+					OnMessage?.Invoke(msg);
+					Log.Write(msg, _user.ID);
+				}
 			}
 			catch (Exception ex)
 			{
-				Log.Write($"Exception in SubscribeToUserDataUpdatesAsync: {ex.Message}", _user.ID);
+				string msg = $"Huobi: Exception in SubscribeToUserDataUpdatesAsync: {ex.Message}";
+				OnMessage?.Invoke(msg);
+				Log.Write(msg, _user.ID);
 			}
 			return b;
+		}
+		public void KeepAlive(int minutesToReconnect = 20)
+        {
+			Thread.Sleep(minutesToReconnect * 60 * 1000);
+			_socketSubscr?.ReconnectAsync();
+
+			OnMessage?.Invoke("Huobi socket reconnected");
+			KeepAlive(minutesToReconnect);
 		}
 		public void Dispose(bool setNull = true)
 		{
@@ -84,6 +87,8 @@ namespace CaOrdersServer
 			{
 				_socketClient.UnsubscribeAllAsync();
 				if (setNull) _socketClient = null;
+
+				OnMessage?.Invoke("Huobi socket disposed");
 			}
 		}
 	}

@@ -5,7 +5,7 @@ using Kucoin.Net.Objects.Models.Spot;
 
 namespace CaOrdersServer
 {
-    public class KucoCaller
+    public class KucoCaller : ApiCaller
     {
         public event Action<string>? OnProgress;
         
@@ -52,17 +52,15 @@ namespace CaOrdersServer
             }
             return balances;
         }
-        public List<CaOrder> GetAllOrders(bool spotMarg = true)
+        public CaOrders GetOrders()
         {
-            List<CaOrder> orders = new();
+            CaOrders orders = new(_user.ID);
             var r = _restClient.SpotApi.Trading.GetOrdersAsync().Result;
             if (r.Success)
             {
                 foreach (var o in r.Data.Items)
                 {
-                    bool sm = o.TradeType == TradeType.SpotTrade;
-                    if(sm == spotMarg)
-                        orders.Add(new CaOrder(o, _user.ID, spotMarg));
+                    orders.Add(new CaOrder(o));
                 }
             }
             return orders;

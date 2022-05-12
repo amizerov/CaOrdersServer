@@ -6,7 +6,6 @@ namespace CaOrdersServer
        */
         // Все юзеры сразу создаются и проверяют ключи
         Users users = new();
-        bool spotMarg = true;
 
         public FrmMain()
         {
@@ -19,8 +18,7 @@ namespace CaOrdersServer
             // Update all orders
             // Один раз при запуске грузим все ордера со всех бирж по запросу
             // далее, следим за изменением статусов через сокет
-            btnOrder_Click(sender, e); // spot
-            btnMarg_Click(sender, e);  // marg
+            //btnOrder_Click(sender, e); // spot
 
             // Start listen orders
             // после первичной загрузки ордеров включаем сокет
@@ -32,34 +30,21 @@ namespace CaOrdersServer
         }
 
         private void btnKeys_Click(object sender, EventArgs e)
-        {   
-            foreach(User u in users)
+        {
+            foreach (User u in users)
             {
-                // Проверка доступа по ключам пользователей на всех биржах,
-                // результат сохраняется в БД и доступен через
-                // u.ApiKeys.Find(k => k.Exchange == "Bina").IsWorking.
-                // Значение свойства IsWorking читается напрямую из БД
-                u.CheckApiKeys();
+                u.CheckApiKeys(1);
+                u.CheckApiKeys(2);
+                u.CheckApiKeys(3);
             }
         }
-
         private void btnOrder_Click(object sender, EventArgs e)
         {
             foreach (User u in users)
             {
-                u.CheckOrdersBinaAsync(spotMarg);
-                u.CheckOrdersKucoAsync(spotMarg);
-                u.CheckOrdersHuobAsync(spotMarg);
-            }
-        }
-
-        private void btnMarg_Click(object sender, EventArgs e)
-        {
-            foreach (User u in users)
-            {
-                u.CheckOrdersBinaAsync(!spotMarg);
-                u.CheckOrdersKucoAsync(!spotMarg);
-                u.CheckOrdersHuobAsync(!spotMarg);
+                u.UpdateOrders(1);
+                u.UpdateOrders(2);
+                u.UpdateOrders(3);
             }
         }
 
@@ -67,11 +52,9 @@ namespace CaOrdersServer
         {
             foreach (User u in users)
             {
-                u.StartListenOrdersBina(spotMarg);
-                u.StartListenOrdersBina(!spotMarg);
-
-                u.StartListenOrdersKuco();
-                u.StartListenOrdersHuob();
+                //u.StartListenOrders(1);
+                u.StartListenOrders(2);
+                //u.StartListenOrders(3);
             }
         }
         void OnProgress(string msg)
@@ -96,5 +79,6 @@ namespace CaOrdersServer
                 //u.KeepAliveSpotBina();
             }
         }
+
     }
 }

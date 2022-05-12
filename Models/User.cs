@@ -22,88 +22,66 @@ namespace CaOrdersServer
 
         public User(DataRow r)
         {
-            _binaCaller = new(this); _binaCaller.OnProgress += OnCallerProgress;
-            _kucoCaller = new(this); _kucoCaller.OnProgress += OnCallerProgress;
-            _huobCaller = new(this); _huobCaller.OnProgress += OnCallerProgress;
-            
-            _binaSocket = new(this); _binaSocket.OnMessage += OnSpcketProgress;
-            _kucoSocket = new(this); _kucoSocket.OnMessage += OnSpcketProgress;
-            _huobSocket = new(this); _huobSocket.OnMessage += OnSpcketProgress;
-
             ID = G._I(r["id"]);
             Name = G._S(r["Name"]);
             Email = G._S(r["Email"]);
 
             string sql = $"select * from UserKeys where usr_id = {ID}";
             DataTable dt = G.db_select(sql);
+
             foreach (DataRow k in dt.Rows)
             {
                 ApiKey key = new ApiKey(k);
-                if(key.Exchange == "Bina") _binaCaller.CheckApiKey();
-                if(key.Exchange == "Kuco") _kucoCaller.CheckApiKey();
-                if(key.Exchange == "Huob") _huobCaller.CheckApiKey();
-
                 ApiKeys.Add(key);
             }
-;        }
 
-        // One time call functions ->
-        public void CheckOrdersBinaAsync(bool spotMarg = true)
-        {/******************************************************* 
-          * Проверка ордеров на Бинансе, вызывается только один раз при запуске программы,
-          * ордера сохраняются или обновляются в БД, потом их статусы обновляются через сокет.
-          * Совмещен вызов для спота и маржина.
-           */
-            Task.Run(() =>
-            {
-                List<CaOrder> orders = _binaCaller.GetAllOrders(spotMarg);
-                foreach (var o in orders)
-                {
-                    bool newOrUpdated = o.Save();
-                }
-            });
+            _binaCaller = new(this); _binaCaller.OnProgress += OnCallerProgress;
+            _kucoCaller = new(this); _kucoCaller.OnProgress += OnCallerProgress;
+            _huobCaller = new(this); _huobCaller.OnProgress += OnCallerProgress;
+
+            _binaSocket = new(this); _binaSocket.OnMessage += OnSpcketProgress;
+            _kucoSocket = new(this); _kucoSocket.OnMessage += OnSpcketProgress;
+            _huobSocket = new(this); _huobSocket.OnMessage += OnSpcketProgress;
         }
-        public void CheckOrdersKucoAsync(bool spotMarg = true)
-        {/******************************************************* 
-          * Проверка ордеров на Кукоине, вызывается только один раз при запуске программы,
-          * ордера сохраняются или обновляются в БД, потом их статусы обновляются через сокет.
-          * Совмещен вызов для спота и маржина.
-           */
-            Task.Run(() =>
-            {
-                List<CaOrder> orders = _kucoCaller.GetAllOrders(spotMarg);
-                foreach (var o in orders)
-                {
-                    bool newOrUpdated = o.Save();
-                }
-            });
-        }
-        public void CheckOrdersHuobAsync(bool spotMarg = true)
+
+        /******************************************************* 
+         * One time call functions ->
+         ******************************************************* 
+         * Проверка ордеров на Бинансе, Кукоине и Хуоби, 
+         * вызывается только один раз при запуске программы,
+         * ордера сохраняются или обновляются в БД, 
+         * потом их статусы обновляются через сокет.
+         * Совмещен вызов для спота и маржина.
+         */
+        public void UpdateOrders(int Exchange)
         {
-            Task.Run(() => 
-            { 
-                List<CaOrder> orders = _huobCaller.GetAllOrders(spotMarg);
-                foreach(var o in orders)
-                {
-                    bool newOrUpdated = o.Save();
-                }
+            ApiCaller caller = 
+                Exchange == 1 ? _binaCaller : 
+                Exchange == 2 ? _kucoCaller : _huobCaller;
+
+            Task.Run(() =>
+            {
+                CaOrders orders = caller.GetOrders();
+                orders.Update();
             });
+        }
+        public bool CheckApiKeys(int Exchange) 
+        {
+            ApiCaller caller =
+                Exchange == 1 ? _binaCaller :
+                Exchange == 2 ? _kucoCaller : _huobCaller;
+
+            return caller.CheckApiKey(); 
         }
         // <--------------------------
 
-        public bool StartListenOrdersBina(bool spotMarg = true)
+        public bool StartListenOrders(int Exchange)
         {
-            return _binaSocket.InitOrdersListener(spotMarg); ;
-        }
-        public bool StartListenOrdersKuco(bool spotMarg = true)
-        {
+            ApiSocket socket = 
+                Exchange == 1 ? _binaSocket :
+                Exchange == 2 ? _kucoSocket : _huobSocket;
 
-            return _kucoSocket.InitOrdersListener();
-        }
-        public bool StartListenOrdersHuob(bool spotMarg = true)
-        {
-
-            return _huobSocket.InitOrdersListener();
+            return socket.InitOrdersListener();
         }
 
         void OnCallerProgress(string msg) => OnProgress?.Invoke(msg);

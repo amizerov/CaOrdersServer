@@ -6,7 +6,7 @@ using Huobi.Net.Objects.Models;
 
 namespace CaOrdersServer
 {
-    public class HuobCaller
+    public class HuobCaller : ApiCaller
     {
         public event Action<string>? OnProgress;
 
@@ -58,9 +58,9 @@ namespace CaOrdersServer
             return balances;
         }
 
-        public List<CaOrder> GetAllOrders(bool spotMarg = true)
+        public CaOrders GetOrders()
         {
-            List<CaOrder> orders = new();
+            CaOrders orders = new(_user.ID);
             if (_apiKey.IsWorking)
             {
                 var ro = _restClient.SpotApi.Trading.GetOpenOrdersAsync().Result;
@@ -68,7 +68,7 @@ namespace CaOrdersServer
                 {
                     foreach (var o in ro.Data)
                     {
-                        orders.Add(new CaOrder(o, _user.ID, spotMarg));
+                        orders.Add(new CaOrder(o));
                     }
                 }
                 var r = _restClient.SpotApi.Trading.GetHistoricalOrdersAsync().Result;
@@ -76,7 +76,7 @@ namespace CaOrdersServer
                 {
                     foreach (var o in r.Data)
                     {
-                        orders.Add(new CaOrder(o, _user.ID, spotMarg));
+                        orders.Add(new CaOrder(o));
                     }
 ;                }
             }

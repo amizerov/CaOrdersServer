@@ -1,13 +1,12 @@
 ﻿using Kucoin.Net.Objects;
 using Microsoft.Extensions.Logging;
 using Kucoin.Net.Clients;
-using CryptoExchange.Net.Authentication;
 using CryptoExchange.Net.Sockets;
 using Kucoin.Net.Objects.Models.Spot.Socket;
 
 namespace CaOrdersServer
 {
-	public class KucoSocket
+	public class KucoSocket : ApiSocket
 	{
 		public event Action<string>? OnMessage;
 
@@ -15,13 +14,7 @@ namespace CaOrdersServer
 		ApiKey _apiKey;
 
 		KucoinSocketClient? _socketClient;
-		UpdateSubscription? _socketSubscrSpot;
-		UpdateSubscription? _socketSubscrMarg;
-
-		KucoinClient? _restClient;
-
-		string _listenKeySpot = "";
-		string _listenKeyMarg = "";
+		UpdateSubscription? _socketSubscr;
 
 		public KucoSocket(User usr)
 		{
@@ -39,49 +32,58 @@ namespace CaOrdersServer
 					});
 			}
 		}
-		public bool InitOrdersListener(bool spotMarg = true)
+		public bool InitOrdersListener(int minutesToReconnect = 20)
 		{
 			bool b = false;
 			if (_socketClient == null) return b;
-
-			var res = _socketClient.SpotStreams.SubscribeToOrderUpdatesAsync(
-				onOrderData =>
-				{
-					KucoinStreamOrderBaseUpdate ord = onOrderData.Data;
-					new CaOrder(ord, _user.ID).Save();
-
-					OnMessage?.Invoke($"Kucoin: Order({ord.Symbol}/{ord.Side}) #{ord.OrderId} is update to {ord.Status} for User {_user.Name}");
-				},
-				onTradeData =>
-				{
-					KucoinStreamOrderMatchUpdate trd = onTradeData.Data;
-					OnMessage?.Invoke($"Kucoin: Trade({trd.Symbol}/{trd.Side}) #{trd.OrderId} is update to {trd.Status} for User {_user.Name}");
-				}
-			).Result;
-			if (res.Success)
-			{
-				b = true;
-				_socketSubscrSpot = res.Data;
-				OnMessage?.Invoke($"Kucoin SubscribeToOrderUpdates is Ok");
-			}
-			else
-				OnMessage?.Invoke($"Kucoin Error in SubscribeToOrderUpdates: {res.Error?.Message}");
-
-			return b;
-		}
-		public bool KeepAlive(bool spotMarg = true)
-		{
-			UpdateSubscription? ups = spotMarg ? _socketSubscrSpot : _socketSubscrMarg;
-			if (ups == null) return false;
+			
 			try
 			{
-				ups.ReconnectAsync();
+				var res = _socketClient.SpotStreams.SubscribeToOrderUpdatesAsync(
+					onOrderData =>
+					{
+						KucoinStreamOrderBaseUpdate ord = onOrderData.Data;
+						new CaOrder(ord, _user.ID).Update();
+
+						OnMessage?.Invoke($"Kucoin: Order({ord.Symbol}/{ord.Side}) #{ord.OrderId} is update to {ord.Status} for User {_user.Name}");
+					},
+					onTradeData =>
+					{
+						KucoinStreamOrderMatchUpdate trd = onTradeData.Data;
+						OnMessage?.Invoke($"Kucoin: Trade({trd.Symbol}/{trd.Side}) #{trd.OrderId} is update to {trd.Status} for User {_user.Name}");
+					}
+				).Result;
+				if (res.Success)
+				{
+					_socketSubscr = res.Data;
+					OnMessage?.Invoke($"Kucoin: socket for {_user.Name} init ok");
+
+					Task.Run(() => KeepAlive(minutesToReconnect));
+
+					b = true;
+				}
+				else
+				{
+					string msg = $"Kucoin({_user.Name}): Error in SubscribeToUserData: {res.Error?.Message}";
+					OnMessage?.Invoke(msg);
+					Log.Write(msg, _user.ID);
+				}
 			}
-			catch
-			{
-				return false;
+			catch (Exception ex)
+            {
+				string msg = $"Kucoin({_user.Name}): Exception in SubscribeToUserData: \r\n{ex.Message}";
+				OnMessage?.Invoke(msg);
+				Log.Write(msg, _user.ID);
 			}
-			return true;
+			return b;
+		}
+		public void KeepAlive(int minutesToReconnect = 20)
+		{
+			Thread.Sleep(minutesToReconnect * 60 * 1000);
+			_socketSubscr?.ReconnectAsync();
+
+			OnMessage?.Invoke("Kucoin socket reconnected");
+			KeepAlive(minutesToReconnect);
 		}
 
 		public void Dispose(bool setNull = true)
@@ -90,6 +92,8 @@ namespace CaOrdersServer
 			{
 				_socketClient.UnsubscribeAllAsync();
 				if (setNull) _socketClient = null;
+
+				OnMessage?.Invoke("Kucoin socket disposed");
 			}
 		}
 	}

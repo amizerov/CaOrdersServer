@@ -7,7 +7,7 @@ using Microsoft.Extensions.Logging;
 
 namespace CaOrdersServer
 {
-	public class BinaSocket
+	public class BinaSocket : ApiSocket
 	{
 		public event Action<string>? OnMessage;
 
@@ -62,50 +62,35 @@ namespace CaOrdersServer
             }
 			return true;
 		}
-		public bool InitOrdersListener(bool spotMarg = true) 
+		public bool InitOrdersListener(int minutesToReconnect = 20)
+        {
+			return 
+				SubscribeToOrdersUpdates(minutesToReconnect, true) && 
+				SubscribeToOrdersUpdates(minutesToReconnect, false);
+
+		}
+		private bool SubscribeToOrdersUpdates(int minutesToReconnect = 20, bool spotMarg = true) 
 		{
 			if (CreateListenKey(spotMarg))
 			{
-
-				var listenKey = spotMarg ? _listenKeySpot : _listenKeyMarg;
-				var res = _socketClient!.SpotStreams.SubscribeToUserDataUpdatesAsync(listenKey,
-					onOrderUpdateMessage =>
-					{
-						BinanceStreamOrderUpdate ord = onOrderUpdateMessage.Data;
-
-						bool newOrUpdated = new CaOrder(ord, _user.ID, spotMarg).Save();
-						if (newOrUpdated)
-							OnMessage?.Invoke($"Binance({_user.Name}): New Order #{ord.Id} added in state {ord.Status}");
-						else
-							OnMessage?.Invoke($"Binance({_user.Name}): Order #{ord.Id} updated to {ord.Status}");
-					},
+				var lik = spotMarg ? _listenKeySpot : _listenKeyMarg; 
+				var res = _socketClient!.SpotStreams.SubscribeToUserDataUpdatesAsync(
+					lik,
+					onOrderUpdateMessage => OnOrderUpdate(onOrderUpdateMessage.Data, spotMarg),
 					null,
-					onAccountPositionMessage =>
-					{
-						BinanceStreamPositionsUpdate acc = onAccountPositionMessage.Data;
-						OnMessage?.Invoke($"Binance({_user.Name}): Account position updated");
-
-						foreach (BinanceStreamBalance b in acc.Balances.ToList())
-						{
-							new CaBalance(b, _user.ID).Update();
-						}
-					},
-					onAccountBalanceUpdateMessage =>
-					{
-						BinanceStreamBalanceUpdate acc = onAccountBalanceUpdateMessage.Data;
-						OnMessage?.Invoke($"Binance: Account balance of user {_user.Name} is updated");
-					}
+					onAccountPositionMessage => OnAccountUpdate(onAccountPositionMessage.Data),
+					null
 				).Result;
 				if (res.Success)
 				{
 					if (spotMarg)
 						_socketSubscrSpot = res.Data;
 					else
-						_socketSubscrMarg = res.Data;
+						_socketSubscrMarg = res.Data; 
 
 					OnMessage?.Invoke($"Binance: {(spotMarg ? "Spot" : "Marg")} socket for {_user.Name} init ok");
 
-					Task.Run(() => KeepAlive());
+					Task.Run(() => KeepAlive(minutesToReconnect));
 				}
 				else
 				{
@@ -119,11 +104,31 @@ namespace CaOrdersServer
 			else
 				return false;
 		}
-		private void KeepAlive()
+		private void OnOrderUpdate(BinanceStreamOrderUpdate ord, bool spotMarg) 
+		{
+			bool newOrUpdated = new CaOrder(ord, _user.ID, spotMarg).Update();
+			if (newOrUpdated)
+				OnMessage?.Invoke($"Binance({_user.Name}): New Order #{ord.Id} added in state {ord.Status}");
+			else
+				OnMessage?.Invoke($"Binance({_user.Name}): Order #{ord.Id} updated to {ord.Status}");
+		}
+		private void OnAccountUpdate(BinanceStreamPositionsUpdate acc)
         {
-			Thread.Sleep(15*60*1000);
+			OnMessage?.Invoke($"Binance({_user.Name}): Account position updated");
+
+			foreach (BinanceStreamBalance b in acc.Balances.ToList())
+			{
+				new CaBalance(b, _user.ID).Update();
+			}
+		}
+		public void KeepAlive(int minutesToReconnect)
+        {
+			Thread.Sleep(minutesToReconnect * 60*1000);
 			_socketSubscrSpot?.ReconnectAsync();
 			_socketSubscrMarg?.ReconnectAsync();
+
+			OnMessage?.Invoke("Binance socket reconnected");
+			KeepAlive(minutesToReconnect);
 		}
 		public void Dispose(bool setNull = true)
 		{

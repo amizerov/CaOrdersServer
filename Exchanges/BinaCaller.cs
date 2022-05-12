@@ -1,6 +1,5 @@
 ﻿using am.BL;
 using Binance.Net.Clients;
-using Binance.Net.Enums;
 using Binance.Net.Objects;
 using Binance.Net.Objects.Models.Spot;
 using CryptoExchange.Net.Authentication;
@@ -8,12 +7,13 @@ using System.Data;
 
 namespace CaOrdersServer
 {
-    public class BinaCaller
+    public class BinaCaller : ApiCaller
     {
         public event Action<string>? OnProgress;
 
-        User _user;
-        ApiKey _apiKey;
+        protected User _user;
+        protected ApiKey _apiKey;
+
         BinanceClient _restClient = new();
 
         public BinaCaller(User usr) { 
@@ -54,27 +54,34 @@ namespace CaOrdersServer
             }
             return balances;
         }
-        public List<CaOrder> GetAllOrders(bool spotMarg = true)
+        public CaOrders GetOrders()
         {
-            List<CaOrder> orders = new();
+            CaOrders orders = new(_user.ID);
             if (_apiKey.IsWorking)
             {
                 foreach (var symbo in GetSymbols())
                 {
-                    var r = spotMarg ? _restClient!.SpotApi.Trading.GetOrdersAsync(symbo).Result
-                                     : _restClient!.SpotApi.Trading.GetMarginOrdersAsync(symbo).Result;
-                    if (r.Success)
+                    var resSpot = _restClient!.SpotApi.Trading.GetOrdersAsync(symbo).Result;
+                    if (resSpot.Success)
                     {
-                        foreach(var o in r.Data)
+                        foreach(var o in resSpot.Data)
                         {
-                            orders.Add(new CaOrder(o, _user.ID, spotMarg));
+                            orders.Add(new CaOrder(o, true));
+                        }
+                    }
+                    var resMarg = _restClient!.SpotApi.Trading.GetMarginOrdersAsync(symbo).Result;
+                    if (resMarg.Success)
+                    {
+                        foreach (var o in resMarg.Data)
+                        {
+                            orders.Add(new CaOrder(o, false));
                         }
                     }
                 }
             }
             return orders;
         }
-        public List<string> GetSymbols()
+        private List<string> GetSymbols()
         {
             List<string> sl = new List<string>();
             string sql = $"select distinct symbol from Orders where exchange = 1 and usr_id = {_user.ID}";

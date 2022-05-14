@@ -7,7 +7,7 @@ using Microsoft.Extensions.Logging;
 
 namespace CaOrdersServer
 {
-	public class BinaSocket : ApiSocket
+	public class BinaSocket : IApiSocket
 	{
 		public event Action<string>? OnMessage;
 
@@ -106,7 +106,7 @@ namespace CaOrdersServer
 		}
 		private void OnOrderUpdate(BinanceStreamOrderUpdate ord, bool spotMarg) 
 		{
-			bool newOrUpdated = new CaOrder(ord, _user.ID, spotMarg).Update();
+			bool newOrUpdated = new Order(ord, _user.ID, spotMarg).Update();
 			if (newOrUpdated)
 				OnMessage?.Invoke($"Binance({_user.Name}): New Order #{ord.Id} added in state {ord.Status}");
 			else
@@ -127,7 +127,7 @@ namespace CaOrdersServer
 			_socketSubscrSpot?.ReconnectAsync();
 			_socketSubscrMarg?.ReconnectAsync();
 
-			OnMessage?.Invoke("Binance socket reconnected");
+			OnMessage?.Invoke($"Binance({_user.Name}) socket reconnected");
 			KeepAlive(minutesToReconnect);
 		}
 		public void Dispose(bool setNull = true)

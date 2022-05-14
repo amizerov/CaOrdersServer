@@ -12,13 +12,7 @@ namespace CaOrdersServer
         public string Email;
         public List<ApiKey> ApiKeys = new();
 
-        private BinaSocket _binaSocket;
-        private KucoSocket _kucoSocket;
-        private HuobSocket _huobSocket;
-
-        private BinaCaller _binaCaller;
-        private KucoCaller _kucoCaller;
-        private HuobCaller _huobCaller;
+        public List<Exchange> Exchanges = new(); 
 
         public User(DataRow r)
         {
@@ -33,59 +27,61 @@ namespace CaOrdersServer
             {
                 ApiKey key = new ApiKey(k);
                 ApiKeys.Add(key);
+
+                Exchange exc = new Exchange(key, this);
+                if (exc.CheckApiKeys())
+                {
+                    Exchanges.Add(exc);
+                    exc.OnCallerProgress += OnCallerProgress;
+                    exc.OnSocketMessage += OnSpcketMessage;
+                }
             }
 
-            _binaCaller = new(this); _binaCaller.OnProgress += OnCallerProgress;
-            _kucoCaller = new(this); _kucoCaller.OnProgress += OnCallerProgress;
-            _huobCaller = new(this); _huobCaller.OnProgress += OnCallerProgress;
-
-            _binaSocket = new(this); _binaSocket.OnMessage += OnSpcketProgress;
-            _kucoSocket = new(this); _kucoSocket.OnMessage += OnSpcketProgress;
-            _huobSocket = new(this); _huobSocket.OnMessage += OnSpcketProgress;
+            OnProgress?.Invoke($"User {Name} created");
         }
 
         /******************************************************* 
          * One time call functions ->
-         ******************************************************* 
-         * Проверка ордеров на Бинансе, Кукоине и Хуоби, 
+         *******************************************************/
+        public bool CheckApiKeys(int exc) 
+        {
+            Exchange? exch = Exchanges.Find(e => e.ID == exc);
+            if(exch == null)
+                return false;
+            else
+                return exch.CheckApiKeys();
+        }
+         /* Проверка ордеров на Бинансе, Кукоине и Хуоби, 
          * вызывается только один раз при запуске программы,
          * ордера сохраняются или обновляются в БД, 
          * потом их статусы обновляются через сокет.
          * Совмещен вызов для спота и маржина.
          */
-        public void UpdateOrders(int Exchange)
+        public void UpdateOrders(int exc)
         {
-            ApiCaller caller = 
-                Exchange == 1 ? _binaCaller : 
-                Exchange == 2 ? _kucoCaller : _huobCaller;
-
-            Task.Run(() =>
-            {
-                CaOrders orders = caller.GetOrders();
-                orders.Update();
-            });
-        }
-        public bool CheckApiKeys(int Exchange) 
-        {
-            ApiCaller caller =
-                Exchange == 1 ? _binaCaller :
-                Exchange == 2 ? _kucoCaller : _huobCaller;
-
-            return caller.CheckApiKey(); 
+            Exchange? exch = Exchanges.Find(e => e.ID == exc);
+            if(exch != null)
+                Task.Run(() =>
+                {
+                    OnProgress?.Invoke($"{exch.Name}({Name}) UpdateOrders start");
+                    exch.UpdateOrders();
+                    OnProgress?.Invoke($"{exch.Name}({Name}) UpdateOrders end");
+                });
         }
         // <--------------------------
 
-        public bool StartListenOrders(int Exchange)
+        public bool StartListenOrders(int exc)
         {
-            ApiSocket socket = 
-                Exchange == 1 ? _binaSocket :
-                Exchange == 2 ? _kucoSocket : _huobSocket;
-
-            return socket.InitOrdersListener();
+            Exchange? exch = Exchanges.Find(e => e.ID == exc);
+            if (exch == null)
+                return false;
+            else
+                return exch.InitOrdersListener();
         }
 
-        void OnCallerProgress(string msg) => OnProgress?.Invoke(msg);
-        void OnSpcketProgress(string msg) => OnProgress?.Invoke(msg);
+        void OnCallerProgress(string msg) => OnProgress?.Invoke("C| " + msg);
+        void OnSpcketMessage(string msg) => OnProgress?.Invoke("S| " + msg);
+        void OnOrderProgress(string msg) => OnProgress?.Invoke("O| " + msg);
     }
 
     public class Users : List<User>

@@ -7,7 +7,7 @@ using System.Data;
 
 namespace CaOrdersServer
 {
-    public class BinaCaller : ApiCaller
+    public class BinaCaller : IApiCaller
     {
         public event Action<string>? OnProgress;
 
@@ -19,8 +19,6 @@ namespace CaOrdersServer
         public BinaCaller(User usr) { 
             _user = usr;
             _apiKey = _user.ApiKeys.Find(k => k.Exchange == "Bina") ?? new();
-
-            CheckApiKey();
         }
         public bool CheckApiKey()
         {
@@ -38,7 +36,7 @@ namespace CaOrdersServer
 
                 _apiKey.IsWorking = res;
             }
-            OnProgress?.Invoke($"{_user.Name} - {_apiKey.Exchange} - IsWorking: {_apiKey.IsWorking}");
+            OnProgress?.Invoke($"CheckApiKey({_apiKey.Exchange}/{_user.Name}) Key.IsWorking: {_apiKey.IsWorking}");
             return res;
         }
         public List<BinanceBalance> GetBalances()
@@ -54,11 +52,13 @@ namespace CaOrdersServer
             }
             return balances;
         }
-        public CaOrders GetOrders()
+        public Orders GetOrders()
         {
-            CaOrders orders = new(_user.ID);
+            Orders orders = new(_user);
             if (_apiKey.IsWorking)
             {
+                OnProgress?.Invoke($"Binance({_user.Name}): GetOrders started");
+
                 foreach (var symbo in GetSymbols())
                 {
                     var resSpot = _restClient!.SpotApi.Trading.GetOrdersAsync(symbo).Result;
@@ -66,7 +66,7 @@ namespace CaOrdersServer
                     {
                         foreach(var o in resSpot.Data)
                         {
-                            orders.Add(new CaOrder(o, true));
+                            orders.Add(new Order(o, true));
                         }
                     }
                     var resMarg = _restClient!.SpotApi.Trading.GetMarginOrdersAsync(symbo).Result;
@@ -74,10 +74,11 @@ namespace CaOrdersServer
                     {
                         foreach (var o in resMarg.Data)
                         {
-                            orders.Add(new CaOrder(o, false));
+                            orders.Add(new Order(o, false));
                         }
                     }
                 }
+                OnProgress?.Invoke($"Binance({_user.Name}): GetOrders orders.Count = {orders.Count}");
             }
             return orders;
         }

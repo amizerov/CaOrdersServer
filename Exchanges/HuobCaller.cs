@@ -6,7 +6,7 @@ using Huobi.Net.Objects.Models;
 
 namespace CaOrdersServer
 {
-    public class HuobCaller : ApiCaller
+    public class HuobCaller : IApiCaller
     {
         public event Action<string>? OnProgress;
 
@@ -18,8 +18,6 @@ namespace CaOrdersServer
         {
             _user = usr;
             _apiKey = _user.ApiKeys.Find(k => k.Exchange == "Huob") ?? new();
-
-            CheckApiKey();
         }
         public bool CheckApiKey()
         {
@@ -37,38 +35,47 @@ namespace CaOrdersServer
 
                 _apiKey.IsWorking = res;
             }
-            OnProgress?.Invoke($"{_user.Name} - {_apiKey.Exchange} - IsWorking: {_apiKey.IsWorking}");
+            OnProgress?.Invoke($"CheckApiKey({_apiKey.Exchange}/{_user.Name}) Key.IsWorking: {_apiKey.IsWorking}");
             return res;
         }
         public List<HuobiBalance> GetBalances()
         {
             List<HuobiBalance> balances = new();
-            if (_apiKey.IsWorking)
+            if (_restClient != null)
             {
-                var res = _restClient!.SpotApi.Account.GetAccountsAsync().Result;
-                foreach (var acc in res.Data)
+                var res = _restClient.SpotApi.Account.GetAccountsAsync().Result;
+                if (res.Success)
                 {
-                    var r = _restClient!.SpotApi.Account.GetBalancesAsync(acc.Id).Result;
-                    if (r != null && r.Success)
+                    foreach (var acc in res.Data)
                     {
-                        balances.AddRange(r.Data.ToList());
+                        var r = _restClient.SpotApi.Account.GetBalancesAsync(acc.Id).Result;
+                        if (r != null && r.Success)
+                        {
+                            balances.AddRange(r.Data.ToList());
+                        }
                     }
+                }
+                else
+                {
+                    OnProgress?.Invoke($"Huobi({_user.Name}) Error GetAccount: {res.Error?.Message}");
                 }
             }
             return balances;
         }
 
-        public CaOrders GetOrders()
+        public Orders GetOrders()
         {
-            CaOrders orders = new(_user.ID);
+            Orders orders = new(_user);
             if (_apiKey.IsWorking)
             {
+                OnProgress?.Invoke($"Huobi({_user.Name}): GetOrders started");
+
                 var ro = _restClient.SpotApi.Trading.GetOpenOrdersAsync().Result;
                 if (ro.Success)
                 {
                     foreach (var o in ro.Data)
                     {
-                        orders.Add(new CaOrder(o));
+                        orders.Add(new Order(o));
                     }
                 }
                 var r = _restClient.SpotApi.Trading.GetHistoricalOrdersAsync().Result;
@@ -76,9 +83,10 @@ namespace CaOrdersServer
                 {
                     foreach (var o in r.Data)
                     {
-                        orders.Add(new CaOrder(o));
+                        orders.Add(new Order(o));
                     }
 ;                }
+                OnProgress?.Invoke($"Huobi({_user.Name}): GetOrders orders.Count = {orders.Count}");
             }
             return orders;
         }

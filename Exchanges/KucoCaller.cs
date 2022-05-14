@@ -1,11 +1,11 @@
 ﻿using Kucoin.Net.Clients;
-using Kucoin.Net.Enums;
 using Kucoin.Net.Objects;
+using Kucoin.Net.Objects.Models;
 using Kucoin.Net.Objects.Models.Spot;
 
 namespace CaOrdersServer
 {
-    public class KucoCaller : ApiCaller
+    public class KucoCaller : IApiCaller
     {
         public event Action<string>? OnProgress;
         
@@ -17,8 +17,6 @@ namespace CaOrdersServer
         {
             _user = usr;
             _apiKey = _user.ApiKeys.Find(k => k.Exchange == "Kuco") ?? new();
-
-            CheckApiKey();
         }
         public bool CheckApiKey()
         {
@@ -36,7 +34,7 @@ namespace CaOrdersServer
 
                 _apiKey.IsWorking = res;
             }
-            OnProgress?.Invoke($"{_user.Name} - {_apiKey.Exchange} - IsWorking: {_apiKey.IsWorking}");
+            OnProgress?.Invoke($"CheckApiKey({_apiKey.Exchange}/{_user.Name}) Key.IsWorking: {_apiKey.IsWorking}");
             return res;
         }
         public List<KucoinAccount> GetBalances()
@@ -52,16 +50,45 @@ namespace CaOrdersServer
             }
             return balances;
         }
-        public CaOrders GetOrders()
+        public Orders GetOrders()
         {
-            CaOrders orders = new(_user.ID);
-            var r = _restClient.SpotApi.Trading.GetOrdersAsync().Result;
-            if (r.Success)
+            Orders orders = new(_user);
+            if (_apiKey.IsWorking)
             {
-                foreach (var o in r.Data.Items)
+                OnProgress?.Invoke($"Kucoin({_user.Name}): GetOrders started");
+                
+                // Получаем ордера по страницам с 1-ой
+                var r = _restClient.SpotApi.Trading.GetOrdersAsync().Result;
+                if (r.Success)
                 {
-                    orders.Add(new CaOrder(o));
+                    int countOrders = 0;
+                    int countPages = r.Data.TotalPages;
+                    int currPage = r.Data.CurrentPage;
+                    int totalOrders = r.Data.TotalItems;
+                    while (currPage <= countPages)
+                    {
+                        KucoinPaginated<KucoinOrder> po = r.Data;
+                        foreach (var ord in po.Items)
+                        {
+                            if (!orders.Any(o => o.ord_id == ord.Id))
+                            {
+                                orders.Add(new Order(ord));
+                                countOrders++;
+                            }
+                        }
+                        // получаем следующую старницу ордеров
+                        r = _restClient.SpotApi.Trading.GetOrdersAsync(currentPage: ++currPage).Result;
+                        if (!r.Success)
+                        {
+                            OnProgress?.Invoke($"Kucoin({_user.Name}): GetOrders(page:{currPage}) error \r\n[{r.Error?.Message}]");
+                            return orders;
+                        }
+                    }
+                    OnProgress?.Invoke($"Kucoin({_user.Name}): GetOrders orders.Count = {orders.Count}|{countOrders}|{totalOrders}");
                 }
+                else
+                    OnProgress?.Invoke($"Kucoin({_user.Name}): GetOrders error \r\n[{r.Error?.Message}]");
+
             }
             return orders;
         }

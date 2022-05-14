@@ -7,6 +7,7 @@ namespace CaOrdersServer
     {
         public int ID = 0;
         public string Exchange = "";
+        public int ExchangeId = 0;
         public string Key = "1";
         public string Secret = "1";
         public string PassPhrase = "";
@@ -44,6 +45,7 @@ namespace CaOrdersServer
         {
             ID = G._I(k["ID"]);
             Exchange = G._S(k["Exchange"]);
+            ExchangeId = G._I(k["ExchangeId"]);
             Key = G._S(k["ApiKey"]);
             Secret = G._S(k["ApiSecret"]);
             PassPhrase = G._S(k["ApiPassPhrase"]);

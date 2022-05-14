@@ -7,7 +7,7 @@ using CryptoExchange.Net.Sockets;
 
 namespace CaOrdersServer
 {
-	public class HuobSocket : ApiSocket
+	public class HuobSocket : IApiSocket
 	{
 		public event Action<string>? OnMessage;
 
@@ -44,7 +44,7 @@ namespace CaOrdersServer
 					onOrderUpdateMessage =>
 					{
 						HuobiSubmittedOrderUpdate ord = onOrderUpdateMessage.Data;
-						new CaOrder(ord, _user.ID).Update();
+						new Order(ord, _user.ID).Update();
 
 						OnMessage?.Invoke($"Huobi: Order({ord.Symbol}/{ord.Side}) #{ord.OrderId} is update to {ord.Status} for User {_user.Name}");
 					}
@@ -78,7 +78,7 @@ namespace CaOrdersServer
 			Thread.Sleep(minutesToReconnect * 60 * 1000);
 			_socketSubscr?.ReconnectAsync();
 
-			OnMessage?.Invoke("Huobi socket reconnected");
+			OnMessage?.Invoke("Huobi({_user.Name}) socket reconnected");
 			KeepAlive(minutesToReconnect);
 		}
 		public void Dispose(bool setNull = true)
@@ -88,7 +88,7 @@ namespace CaOrdersServer
 				_socketClient.UnsubscribeAllAsync();
 				if (setNull) _socketClient = null;
 
-				OnMessage?.Invoke("Huobi socket disposed");
+				OnMessage?.Invoke($"Huobi({_user.Name}) socket disposed");
 			}
 		}
 	}

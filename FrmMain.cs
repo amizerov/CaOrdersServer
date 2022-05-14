@@ -15,18 +15,20 @@ namespace CaOrdersServer
         {
             users.OnProgress += OnProgress;
 
-            // Update all orders
-            // Один раз при запуске грузим все ордера со всех бирж по запросу
-            // далее, следим за изменением статусов через сокет
-            //btnOrder_Click(sender, e); // spot
+            //btnKeys_Click(sender, e);
 
-            // Start listen orders
-            // после первичной загрузки ордеров включаем сокет
-            btnListen_Click(sender, e);
+            /* Update all orders
+             Один раз при запуске грузим все ордера со всех бирж по запросу
+             далее, следим за изменением статусов через сокет */
+            //btnOrder_Click(sender, e);
 
-            // Keep alive sockets
-            // Каждые 15 минут переподключаем сокеты по всем биржам
-            timer_15min.Start(); // will also check api keys
+            /* Start listen orders
+             после первичной загрузки ордеров включаем сокет */
+            //btnListen_Click(sender, e);
+
+            /* Keep alive sockets
+             Каждые 15 минут переподключаем сокеты по всем биржам */
+            //timer_15min.Start(); // will also check api keys
         }
 
         private void btnKeys_Click(object sender, EventArgs e)
@@ -42,9 +44,9 @@ namespace CaOrdersServer
         {
             foreach (User u in users)
             {
-                u.UpdateOrders(1);
+                //u.UpdateOrders(1);
                 u.UpdateOrders(2);
-                u.UpdateOrders(3);
+                //u.UpdateOrders(3);
             }
         }
 
@@ -52,9 +54,9 @@ namespace CaOrdersServer
         {
             foreach (User u in users)
             {
-                //u.StartListenOrders(1);
+                u.StartListenOrders(1);
                 u.StartListenOrders(2);
-                //u.StartListenOrders(3);
+                u.StartListenOrders(3);
             }
         }
         void OnProgress(string msg)

@@ -45,12 +45,13 @@
             this.txtLog.Multiline = true;
             this.txtLog.Name = "txtLog";
             this.txtLog.ScrollBars = System.Windows.Forms.ScrollBars.Vertical;
-            this.txtLog.Size = new System.Drawing.Size(608, 551);
+            this.txtLog.Size = new System.Drawing.Size(894, 551);
             this.txtLog.TabIndex = 0;
             // 
             // btnOrder
             // 
-            this.btnOrder.Location = new System.Drawing.Point(641, 114);
+            this.btnOrder.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
+            this.btnOrder.Location = new System.Drawing.Point(927, 114);
             this.btnOrder.Name = "btnOrder";
             this.btnOrder.Size = new System.Drawing.Size(136, 45);
             this.btnOrder.TabIndex = 1;
@@ -60,7 +61,8 @@
             // 
             // btnListen
             // 
-            this.btnListen.Location = new System.Drawing.Point(641, 186);
+            this.btnListen.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
+            this.btnListen.Location = new System.Drawing.Point(927, 186);
             this.btnListen.Name = "btnListen";
             this.btnListen.Size = new System.Drawing.Size(136, 45);
             this.btnListen.TabIndex = 1;
@@ -75,7 +77,8 @@
             // 
             // btnKeys
             // 
-            this.btnKeys.Location = new System.Drawing.Point(641, 42);
+            this.btnKeys.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
+            this.btnKeys.Location = new System.Drawing.Point(927, 42);
             this.btnKeys.Name = "btnKeys";
             this.btnKeys.Size = new System.Drawing.Size(136, 45);
             this.btnKeys.TabIndex = 2;
@@ -87,7 +90,7 @@
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(7F, 15F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(800, 575);
+            this.ClientSize = new System.Drawing.Size(1086, 575);
             this.Controls.Add(this.btnKeys);
             this.Controls.Add(this.btnListen);
             this.Controls.Add(this.btnOrder);

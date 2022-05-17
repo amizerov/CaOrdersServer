@@ -25,11 +25,19 @@ namespace CaOrdersServer
             bool res = false;
             if (_apiKey.ID > 0)
             {
-                _restClient = new BinanceClient(
-                    new BinanceClientOptions()
-                    {
-                        ApiCredentials = new ApiCredentials(_apiKey.Key!, _apiKey.Secret!)
-                    });
+                try
+                {
+                    _restClient = new BinanceClient(
+                        new BinanceClientOptions()
+                        {
+                            ApiCredentials = new ApiCredentials(_apiKey.Key!, _apiKey.Secret!)
+                        });
+                }
+                catch (Exception ex)
+                {
+                    OnProgress?.Invoke($"CheckApiKey({_apiKey.Exchange}/{_user.Name}) Error: {ex.Message}");
+                    return false;
+                }
                 // Если получен доступ к балансам, ключ считается рабочим
                 List<BinanceBalance> bs = GetBalances();
                 res = bs.Count > 0;
@@ -39,16 +47,17 @@ namespace CaOrdersServer
             OnProgress?.Invoke($"CheckApiKey({_apiKey.Exchange}/{_user.Name}) Key.IsWorking: {_apiKey.IsWorking}");
             return res;
         }
-        public List<BinanceBalance> GetBalances()
+        List<BinanceBalance> GetBalances()
         {
             List<BinanceBalance> balances = new();
-            if (_apiKey.IsWorking)
+            var res = _restClient!.SpotApi.Account.GetAccountInfoAsync().Result;
+            if (res.Success)
             {
-                var r = _restClient!.SpotApi.Account.GetAccountInfoAsync().Result;
-                if (r != null && r.Success)
-                {
-                    balances = r.Data.Balances.ToList();
-                }
+                balances = res.Data.Balances.ToList();
+            }
+            else
+            {
+                OnProgress?.Invoke($"Bina({_user.Name}) Error GetAccountInfoAsync: {res.Error?.Message}");
             }
             return balances;
         }

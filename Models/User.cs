@@ -89,7 +89,7 @@ namespace CaOrdersServer
         public event Action<string>? OnProgress;
         public Users()
         {
-            string sql = "select distinct u.* from Users u join Pairs p on u.id = p.usr_id";
+            string sql = "select distinct u.* from Users u join UserKeys k on u.id = k.usr_id where IsConfirmed = 1";
             DataTable dt = G.db_select(sql);
             foreach (DataRow r in dt.Rows)
             {

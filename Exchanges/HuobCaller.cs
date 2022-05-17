@@ -24,11 +24,19 @@ namespace CaOrdersServer
             bool res = false;
             if (_apiKey.ID > 0)
             {
-                _restClient = new HuobiClient(
-                    new HuobiClientOptions()
-                    {
-                        ApiCredentials = new ApiCredentials(_apiKey.Key!, _apiKey.Secret!)
-                    });
+                try 
+                { 
+                    _restClient = new HuobiClient(
+                        new HuobiClientOptions()
+                        {
+                            ApiCredentials = new ApiCredentials(_apiKey.Key!, _apiKey.Secret!)
+                        });
+                }
+                catch (Exception ex)
+                {
+                    OnProgress?.Invoke($"CheckApiKey({_apiKey.Exchange}/{_user.Name}) Error: {ex.Message}");
+                    return false;
+                }
                 // Если получен доступ к балансам, ключ считается рабочим
                 List<HuobiBalance> bs = GetBalances();
                 res = bs.Count > 0;
@@ -38,27 +46,28 @@ namespace CaOrdersServer
             OnProgress?.Invoke($"CheckApiKey({_apiKey.Exchange}/{_user.Name}) Key.IsWorking: {_apiKey.IsWorking}");
             return res;
         }
-        public List<HuobiBalance> GetBalances()
+        List<HuobiBalance> GetBalances()
         {
             List<HuobiBalance> balances = new();
-            if (_restClient != null)
+            var res = _restClient.SpotApi.Account.GetAccountsAsync().Result;
+            if (res.Success)
             {
-                var res = _restClient.SpotApi.Account.GetAccountsAsync().Result;
-                if (res.Success)
+                foreach (var acc in res.Data)
                 {
-                    foreach (var acc in res.Data)
+                    var r = _restClient.SpotApi.Account.GetBalancesAsync(acc.Id).Result;
+                    if (r != null && r.Success)
                     {
-                        var r = _restClient.SpotApi.Account.GetBalancesAsync(acc.Id).Result;
-                        if (r != null && r.Success)
-                        {
-                            balances.AddRange(r.Data.ToList());
-                        }
+                        balances.AddRange(r.Data.ToList());
+                    }
+                    else
+                    {
+                        OnProgress?.Invoke($"Huobi({_user.Name}) Error GetBalancesAsync: {res.Error?.Message}");
                     }
                 }
-                else
-                {
-                    OnProgress?.Invoke($"Huobi({_user.Name}) Error GetAccount: {res.Error?.Message}");
-                }
+            }
+            else
+            {
+                OnProgress?.Invoke($"Huobi({_user.Name}) Error GetAccountsAsync: {res.Error?.Message}");
             }
             return balances;
         }

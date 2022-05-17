@@ -23,11 +23,19 @@ namespace CaOrdersServer
             bool res = false;
             if (_apiKey.ID > 0)
             {
-                _restClient = new KucoinClient(
-                    new KucoinClientOptions()
-                    {
-                        ApiCredentials = new KucoinApiCredentials(_apiKey.Key!, _apiKey.Secret!, _apiKey.PassPhrase)
-                    });
+                try
+                {
+                    _restClient = new KucoinClient(
+                        new KucoinClientOptions()
+                        {
+                            ApiCredentials = new KucoinApiCredentials(_apiKey.Key!, _apiKey.Secret!, _apiKey.PassPhrase)
+                        });
+                }
+                catch (Exception ex)
+                {
+                    OnProgress?.Invoke($"CheckApiKey({_apiKey.Exchange}/{_user.Name}) Error: {ex.Message}");
+                    return false; 
+                }
                 // Если получен доступ к балансам, ключ считается рабочим
                 List<KucoinAccount> bs = GetBalances();
                 res = bs.Count > 0;
@@ -37,16 +45,18 @@ namespace CaOrdersServer
             OnProgress?.Invoke($"CheckApiKey({_apiKey.Exchange}/{_user.Name}) Key.IsWorking: {_apiKey.IsWorking}");
             return res;
         }
-        public List<KucoinAccount> GetBalances()
+        List<KucoinAccount> GetBalances()
         {
             List<KucoinAccount> balances = new();
-            if (_apiKey.IsWorking)
+            var res = _restClient!.SpotApi.Account.GetAccountsAsync().Result;
+            if (res.Success)
             {
-                var r = _restClient!.SpotApi.Account.GetAccountsAsync().Result;
-                if (r != null && r.Success)
-                {
-                    balances = r.Data.ToList();
-                }
+                // TODO: может быть 0 акаунтов почемуто
+                balances = res.Data.ToList();
+            }
+            else
+            {
+                OnProgress?.Invoke($"Kuco({_user.Name}) Error GetAccountsAsync: {res.Error?.Message}");
             }
             return balances;
         }

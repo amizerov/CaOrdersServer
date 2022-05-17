@@ -59,8 +59,8 @@ namespace CaOrdersServer
     {
         public event Action<string>? OnProgress;
        
-        public bool CheckApiKey();// { return false; }
-        public Orders GetOrders();// { return new List<CaOrder>(); }
+        public bool CheckApiKey();
+        public Orders GetOrders();
     }
     interface IApiSocket
     {

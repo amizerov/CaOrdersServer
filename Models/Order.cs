@@ -1,4 +1,5 @@
-﻿using Binance.Net.Objects.Models.Spot;
+﻿using am.BL;
+using Binance.Net.Objects.Models.Spot;
 using Binance.Net.Objects.Models.Spot.Socket;
 using Huobi.Net.Objects.Models;
 using Huobi.Net.Objects.Models.Socket;
@@ -55,6 +56,7 @@ namespace CaOrdersServer
         public Order(KucoinOrder o)
         {
             ord_id = o.Id.ToString();
+            clientOrd_id = o.ClientOrderId?.ToString();
             exchange = 2; // 1 - Bina, 2 - Kuco, 3 - Huob
             symbol = o.Symbol;
             spotmar = o.TradeType == TradeType.SpotTrade;
@@ -144,26 +146,36 @@ namespace CaOrdersServer
 
         // Список содержит все ордера юзера, полученные с биржи
         private User _user;
-        int exchen = 0;
+        int exchan = 0;
         public Orders(User usr)
         {
             _user = usr;
         }
         public void Update()
         {
+            string listOrdersComaSeparated = "";
             foreach (var o in this)
             {
-                bool newOrUpdated = o.Update();
+                listOrdersComaSeparated += "'" + o.ord_id + "',";
             }
+            listOrdersComaSeparated += 0;
+            G.db_exec(
+                @$"update Orders set state = -1, dtu = getdate() 
+                   where usr_id={_user.ID} and exchange={exchan} 
+                    and not ord_id in ({listOrdersComaSeparated})"
+            );
         }
         public new void Add(Order o)
         {
-            exchen = o.exchange;
+            exchan = o.exchange;
             o.usr_id = _user.ID;
             base.Add(o);
 
+            o.Update();
+
             o.OnProgress += OnProgress;
         }
+
     }
 
 }

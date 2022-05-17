@@ -6,6 +6,7 @@
     <Nullable>enable</Nullable>
     <UseWindowsForms>true</UseWindowsForms>
     <ImplicitUsings>enable</ImplicitUsings>
+	<Version>1.0.0.1</Version>
   </PropertyGroup>
 
   <ItemGroup>
@@ -25,6 +26,7 @@
   <ItemGroup>
     <PackageReference Include="Binance.Net" Version="8.0.13" />
     <PackageReference Include="CryptoExchange.Net" Version="5.1.9" />
+    <PackageReference Include="devexpress.win.design" Version="21.2.3" />
     <PackageReference Include="Huobi.Net" Version="4.0.10" />
     <PackageReference Include="Kucoin.Net" Version="4.0.9" />
     <PackageReference Include="Microsoft.EntityFrameworkCore" Version="6.0.5" />

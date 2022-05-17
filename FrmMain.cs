@@ -1,15 +1,18 @@
+using DevExpress.XtraEditors;
+
 namespace CaOrdersServer
 {
-    public partial class FrmMain : Form
+    public partial class FrmMain : XtraForm 
     {/* Доступ ко всем функциям через пользователей,
       * сообщения через из вложенных через евент OnProgress
        */
-        // Все юзеры сразу создаются и проверяют ключи
+        // Все юзеры сразу создаются
         Users users = new();
 
         public FrmMain()
         {
             InitializeComponent();
+            Text += " v." + Application.ProductVersion;
         }
         private void FrmMain_Load(object sender, EventArgs e)
         {
@@ -33,6 +36,8 @@ namespace CaOrdersServer
 
         private void btnKeys_Click(object sender, EventArgs e)
         {
+            txtLog.Text = "";
+
             foreach (User u in users)
             {
                 u.CheckApiKeys(1);
@@ -42,16 +47,20 @@ namespace CaOrdersServer
         }
         private void btnOrder_Click(object sender, EventArgs e)
         {
+            txtLog.Text = "";
+
             foreach (User u in users)
             {
-                //u.UpdateOrders(1);
+                u.UpdateOrders(1);
                 u.UpdateOrders(2);
-                //u.UpdateOrders(3);
+                u.UpdateOrders(3);
             }
         }
 
         private void btnListen_Click(object sender, EventArgs e)
         {
+            txtLog.Text = "";
+            
             foreach (User u in users)
             {
                 u.StartListenOrders(1);
@@ -66,11 +75,6 @@ namespace CaOrdersServer
             Invoke(new Action(() =>
             {
                 txtLog.Text = msg + txtLog.Text;
-
-                if (txtLog.Text.Count(c => c == '\r') > 100)
-                {
-                    txtLog.Text = txtLog.Text.Substring(0, 100);
-                }
             }));
         }
 

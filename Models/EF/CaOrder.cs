@@ -20,6 +20,7 @@ namespace CaOrdersServer
         [Key]
         public int id { get; set; }
         public string? ord_id { get; set; }
+        public string? clientOrd_id { get; set; }
         public int usr_id { get; set; }
         public string? symbol { get; set; }
         public int exchange { get; set; }
@@ -43,26 +44,38 @@ namespace CaOrdersServer
                                 x.usr_id == usr_id &&
                                 x.ord_id == ord_id &&
                                 x.exchange == exchange).FirstOrDefault();
+                string msg = "";
                 if (o != null)
                 {
-                    o.qty = qty;
-                    o.price = price;
-                    o.state = state;
-                    o.spotmar = spotmar;
-                    o.dt_exec = dt_exec;
+                    if (o.qty != qty) msg = "qty"; o.qty = qty;
+                    if (o.price != price) msg = "price"; o.price = price;
+                    if (o.state != state) msg = "state"; o.state = state;
+                    if (o.dt_exec != dt_exec) msg = "dt_exec"; o.dt_exec = dt_exec;
+
                     o.dt_create = dt_create;
                     o.exchange = exchange;
+                    o.spotmar = spotmar;
+
                     o.symbol = symbol!.ToUpper().Replace("-", "").Replace("/", "");
-                    o.dtu = DateTime.Now;
+
+                    if (msg.Length > 0)
+                    {
+                        o.dtu = DateTime.Now;
+                        msg = $"Order {symbol}|{exchange}|{ord_id} updated";
+                    }
                 }
                 else
                 {
                     db.Orders!.Add(this);
                     newOrUpdated = false;
 
-                    OnProgress?.Invoke($"New Order found {symbol}|{exchange}|{ord_id}");
+                    msg = $"New Order found {symbol}|{exchange}|{ord_id}";
                 }
-                db.SaveChanges();
+                if (msg.Length > 0)
+                {
+                    OnProgress?.Invoke(msg);
+                    db.SaveChanges();
+                }
 
                 return newOrUpdated;
             }

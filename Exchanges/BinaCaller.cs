@@ -59,32 +59,56 @@ namespace CaOrdersServer
             {
                 OnProgress?.Invoke($"Binance({_user.Name}): GetOrders started");
 
-                foreach (var symbo in GetSymbols())
+                List<string> symbols = GetUserTradedSymbols();
+                foreach (var symbo in symbols)
                 {
+                    bool orderFound = false;
                     var resSpot = _restClient!.SpotApi.Trading.GetOrdersAsync(symbo).Result;
                     if (resSpot.Success)
                     {
-                        foreach(var o in resSpot.Data)
-                        {
-                            orders.Add(new Order(o, true));
-                        }
+                        if(resSpot.Data != null)
+                            foreach(var o in resSpot.Data)
+                            {
+                                orders.Add(new Order(o, true));
+                                orderFound = true;
+                            }
+                        else
+                            OnProgress?.Invoke($"Binance({_user.Name}): SPOT {symbo} resSpot.Data == NULL");
                     }
-                    var resMarg = _restClient!.SpotApi.Trading.GetMarginOrdersAsync(symbo).Result;
-                    if (resMarg.Success)
+                    else
+                        OnProgress?.Invoke($"Binance({_user.Name}): SPOT {symbo} Error: {resSpot.Error?.Message}");
+
+
+                    if (IsAccountMargine())
                     {
-                        foreach (var o in resMarg.Data)
+                        var resMarg = _restClient!.SpotApi.Trading.GetMarginOrdersAsync(symbo).Result;
+                        if (resMarg.Success)
                         {
-                            orders.Add(new Order(o, false));
+                            if (resMarg.Data != null)
+                                foreach (var o in resMarg.Data)
+                                {
+                                    orders.Add(new Order(o, false));
+                                    orderFound = true;
+                                }
+                            else
+                                OnProgress?.Invoke($"Binance({_user.Name}): MARG {symbo} resMarg.Data == NULL");
                         }
+                        else
+                            OnProgress?.Invoke($"Binance({_user.Name}): MARG {symbo} Error: {resMarg.Error?.Message}");
                     }
+                    if (orderFound)
+                        OnProgress?.Invoke($"Binance({_user.Name}): orders found for {symbo}");
+
+                    Thread.Sleep(1000);
                 }
                 OnProgress?.Invoke($"Binance({_user.Name}): GetOrders orders.Count = {orders.Count}");
             }
             return orders;
         }
-        private List<string> GetSymbols()
+        private List<string> GetUserTradedSymbols()
         {
             List<string> sl = new List<string>();
+
             string sql = $"select distinct symbol from Orders where exchange = 1 and usr_id = {_user.ID}";
             DataTable dt = G.db_select(sql);
             foreach (DataRow r in dt.Rows)
@@ -92,7 +116,38 @@ namespace CaOrdersServer
                 var s = G._S(r["symbol"]);
                 if(!sl.Contains(s)) sl.Add(s);
             }
+
+            if(sl.Count == 0) sl = GetAllBinanceSymbols();
+
             return sl;
+        }
+        private List<string> GetAllBinanceSymbols()
+        {
+            List<string> sl = new List<string>();
+
+            string cdt = DateTime.Now.ToString("yyyyMMdd");
+            string sql = $"select distinct symbol from Products where exchange = 1 and dtc > '{cdt}'";
+            DataTable dt = G.db_select(sql);
+            foreach (DataRow r in dt.Rows)
+            {
+                var s = G._S(r["symbol"]);
+                sl.Add(s);
+            }
+
+            return sl;            
+        }
+        private bool IsAccountMargine()
+        {
+            // TODO: не работает
+            bool isMargAcc = true; // false;
+            
+            var resAcco = _restClient!.SpotApi.Account.GetAccountInfoAsync().Result;
+            if (resAcco.Success)
+                foreach (var p in resAcco.Data.Permissions)
+                    if (p == Binance.Net.Enums.AccountType.Margin) 
+                        isMargAcc = true;
+
+            return isMargAcc;
         }
     }
 }

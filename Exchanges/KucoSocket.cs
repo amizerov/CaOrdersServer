@@ -44,8 +44,9 @@ namespace CaOrdersServer
 							Order o = new Order(ord, _user.ID);
 							if (o.state == OState.Open) 
 							{
-								// Для ордера, открытого через сокет Куки, не могу понять он СПОТ или МАРЖ
-								// это только для Кукоина, в других нет проблемы узнать СПОТ или МАРЖ
+								// Для ордера, открытого через Socket, не могу понять он СПОТ или МАРЖ
+								// используем Call запрос для получения инфы об ордере
+								// это только для Кукоина
 								o = _user.Exchanges.Find(e => e.Name == "Kuco")!.GetOrder(ord.OrderId);
 							}
 							o.Update("KucoSocket");

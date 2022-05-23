@@ -1,0 +1,21 @@
+{
+  "Version": 1,
+  "ProjectMap": {
+    "535a3dfb-0d10-4b42-9ee6-5fd60e129852": {
+      "ProjectGuid": "535a3dfb-0d10-4b42-9ee6-5fd60e129852",
+      "DisplayName": "CaOrdersServer",
+      "ColorIndex": 0
+    },
+    "a2fe74e1-b743-11d0-ae1a-00a0c90fffc3": {
+      "ProjectGuid": "a2fe74e1-b743-11d0-ae1a-00a0c90fffc3",
+      "DisplayName": "Прочие файлы",
+      "ColorIndex": -1
+    },
+    "16d1cc34-6c73-4b52-aaf6-aa5c012db0ac": {
+      "ProjectGuid": "16d1cc34-6c73-4b52-aaf6-aa5c012db0ac",
+      "DisplayName": "CaTest1",
+      "ColorIndex": 1
+    }
+  },
+  "NextColorIndex": 2
+}

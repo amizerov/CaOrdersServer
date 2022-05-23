@@ -44,15 +44,15 @@ namespace CaOrdersServer
 					onOrderUpdateMessage =>
 					{
 						HuobiSubmittedOrderUpdate ord = onOrderUpdateMessage.Data;
-						new Order(ord, _user.ID).Update();
+						new Order(ord, _user.ID).Update("HuobSocket");
 
-						OnMessage?.Invoke($"Huobi: Order({ord.Symbol}/{ord.Side}) #{ord.OrderId} is update to {ord.Status} for User {_user.Name}");
+						OnMessage?.Invoke($"Huob({_user.Name}): Order({ord.Symbol}/{ord.Side}/{ord.Price}) updated to {ord.Status}");
 					}
 				).Result;
 				if (res.Success)
 				{
 					_socketSubscr = res.Data;
-					OnMessage?.Invoke($"Huobi: socket for {_user.Name} init ok");
+					OnMessage?.Invoke($"Huob({_user.Name}): socket init ok");
 
 					Task.Run(() => KeepAlive(minutesToReconnect));
 
@@ -60,14 +60,14 @@ namespace CaOrdersServer
 				}
 				else
 				{
-					string msg = $"Huobi: Error in SubscribeToUserDataUpdatesAsync: {res.Error?.Message}";
+					string msg = $"Huob({_user.Name}): Error in SubscribeToUserDataUpdatesAsync: {res.Error?.Message}";
 					OnMessage?.Invoke(msg);
 					Log.Write(msg, _user.ID);
 				}
 			}
 			catch (Exception ex)
 			{
-				string msg = $"Huobi: Exception in SubscribeToUserDataUpdatesAsync: {ex.Message}";
+				string msg = $"Huob({_user.Name}): Exception in SubscribeToUserDataUpdatesAsync: {ex.Message}";
 				OnMessage?.Invoke(msg);
 				Log.Write(msg, _user.ID);
 			}
@@ -78,7 +78,7 @@ namespace CaOrdersServer
 			Thread.Sleep(minutesToReconnect * 60 * 1000);
 			_socketSubscr?.ReconnectAsync();
 
-			OnMessage?.Invoke("Huobi({_user.Name}) socket reconnected");
+			OnMessage?.Invoke($"Huob({_user.Name}) socket reconnected");
 			KeepAlive(minutesToReconnect);
 		}
 		public void Dispose(bool setNull = true)
@@ -88,7 +88,7 @@ namespace CaOrdersServer
 				_socketClient.UnsubscribeAllAsync();
 				if (setNull) _socketClient = null;
 
-				OnMessage?.Invoke($"Huobi({_user.Name}) socket disposed");
+				OnMessage?.Invoke($"Huob({_user.Name}) socket disposed");
 			}
 		}
 	}

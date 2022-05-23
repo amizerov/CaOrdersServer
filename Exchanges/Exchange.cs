@@ -43,6 +43,10 @@ namespace CaOrdersServer
         {
             return _caller.CheckApiKey();
         }
+        public Order GetOrder(string orderId)
+        {
+            return _caller.GetOrder(orderId);
+        }
         public void UpdateOrders()
         {
             Orders orders = _caller.GetOrders();
@@ -61,6 +65,7 @@ namespace CaOrdersServer
        
         public bool CheckApiKey();
         public Orders GetOrders();
+        public Order GetOrder(string orderId);
     }
     interface IApiSocket
     {

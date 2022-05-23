@@ -3,6 +3,7 @@ using Microsoft.Extensions.Logging;
 using Kucoin.Net.Clients;
 using CryptoExchange.Net.Sockets;
 using Kucoin.Net.Objects.Models.Spot.Socket;
+using Kucoin.Net.Objects.Models.Spot;
 
 namespace CaOrdersServer
 {
@@ -39,20 +40,28 @@ namespace CaOrdersServer
 						onOrderData =>
 						{
 							KucoinStreamOrderBaseUpdate ord = onOrderData.Data;
-							new Order(ord, _user.ID).Update();
 
-							OnMessage?.Invoke($"Kucoin: Order({ord.Symbol}/{ord.Side}) #{ord.OrderId} is update to {ord.Status} for User {_user.Name}");
+							Order o = new Order(ord, _user.ID);
+							if (o.state == OState.Open) 
+							{
+								// Для ордера, открытого через сокет Куки, не могу понять он СПОТ или МАРЖ
+								// это только для Кукоина, в других нет проблемы узнать СПОТ или МАРЖ
+								o = _user.Exchanges.Find(e => e.Name == "Kuco")!.GetOrder(ord.OrderId);
+							}
+							o.Update("KucoSocket");
+
+							OnMessage?.Invoke($"Kuco({_user.Name}): Order({ord.Symbol}/{ord.Side}/{ord.Price}) updated to {o.state}|{ord.Status}");
 						},
 						onTradeData =>
 						{
 							KucoinStreamOrderMatchUpdate trd = onTradeData.Data;
-							OnMessage?.Invoke($"Kucoin: Trade({trd.Symbol}/{trd.Side}) #{trd.OrderId} is update to {trd.Status} for User {_user.Name}");
+							OnMessage?.Invoke($"Kuco({_user.Name}): Trade({trd.Symbol}/{trd.Side}/{trd.Price}) updated to {trd.Status}");
 						}
 					).Result;
 					if (res.Success)
 					{
 						_socketSubscr = res.Data;
-						OnMessage?.Invoke($"Kucoin({_user.Name}): socket init ok");
+						OnMessage?.Invoke($"Kuco({_user.Name}): socket init ok");
 
 						Task.Run(() => KeepAlive(minutesToReconnect));
 
@@ -60,7 +69,7 @@ namespace CaOrdersServer
 					}
 					else
 					{
-						string msg = $"Kucoin({_user.Name}): Error in SubscribeToUserData: \r\n{res.Error?.Message}";
+						string msg = $"Kuco({_user.Name}): Error in SubscribeToUserData: \r\n{res.Error?.Message}";
 						OnMessage?.Invoke(msg);
 						Log.Write(msg, _user.ID);
 					}
@@ -68,7 +77,7 @@ namespace CaOrdersServer
 			}
 			catch (Exception ex)
             {
-				string msg = $"Kucoin({_user.Name}): Exception in SubscribeToUserData: \r\n{ex.Message}";
+				string msg = $"Kuco({_user.Name}): Exception in SubscribeToUserData: \r\n{ex.Message}";
 				OnMessage?.Invoke(msg);
 				Log.Write(msg, _user.ID);
 			}
@@ -79,7 +88,7 @@ namespace CaOrdersServer
 			Thread.Sleep(minutesToReconnect * 60 * 1000);
 			_socketSubscr?.ReconnectAsync();
 
-			OnMessage?.Invoke($"Kucoin({_user.Name}) socket reconnected");
+			OnMessage?.Invoke($"Kuco({_user.Name}) socket reconnected");
 			KeepAlive(minutesToReconnect);
 		}
 
@@ -90,7 +99,7 @@ namespace CaOrdersServer
 				_socketClient.UnsubscribeAllAsync();
 				if (setNull) _socketClient = null;
 
-				OnMessage?.Invoke("Kucoin socket disposed");
+				OnMessage?.Invoke($"Kuco({_user.Name}) socket disposed");
 			}
 		}
 	}

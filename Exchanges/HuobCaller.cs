@@ -61,23 +61,26 @@ namespace CaOrdersServer
                     }
                     else
                     {
-                        OnProgress?.Invoke($"Huobi({_user.Name}) Error GetBalancesAsync: {res.Error?.Message}");
+                        OnProgress?.Invoke($"Huob({_user.Name}) Error GetBalancesAsync: {res.Error?.Message}");
                     }
                 }
             }
             else
             {
-                OnProgress?.Invoke($"Huobi({_user.Name}) Error GetAccountsAsync: {res.Error?.Message}");
+                OnProgress?.Invoke($"Huob({_user.Name}) Error GetAccountsAsync: {res.Error?.Message}");
             }
             return balances;
         }
-
+        public Order GetOrder(string oid)
+        {
+            return new Order();
+        }
         public Orders GetOrders()
         {
             Orders orders = new(_user);
             if (_apiKey.IsWorking)
             {
-                OnProgress?.Invoke($"Huobi({_user.Name}): GetOrders started");
+                OnProgress?.Invoke($"Huob({_user.Name}): GetOrders started");
 
                 var ro = _restClient.SpotApi.Trading.GetOpenOrdersAsync().Result;
                 if (ro.Success)
@@ -95,7 +98,7 @@ namespace CaOrdersServer
                         orders.Add(new Order(o));
                     }
 ;                }
-                OnProgress?.Invoke($"Huobi({_user.Name}): GetOrders orders.Count = {orders.Count}");
+                OnProgress?.Invoke($"Huob({_user.Name}): GetOrders orders.Count = {orders.Count}");
             }
             return orders;
         }

@@ -11,6 +11,7 @@ namespace CaOrdersServer
 {
     public class Order : CaOrder
     {
+        public Order() { }
         //---------------------------------
         public Order(BinanceOrder o, bool sm = true /*spot, false - marg*/)
         {
@@ -23,12 +24,12 @@ namespace CaOrdersServer
             qty = o.Quantity;
             dt_create = o.CreateTime;
             state =
-                o.Status == Binance.Net.Enums.OrderStatus.New ? (int)OState.Open :
-                o.Status == Binance.Net.Enums.OrderStatus.Filled ? (int)OState.Filled :
-                o.Status == Binance.Net.Enums.OrderStatus.Canceled ? (int)OState.Canceled :
-                o.Status == Binance.Net.Enums.OrderStatus.Rejected ? (int)OState.Canceled :
-                o.Status == Binance.Net.Enums.OrderStatus.Expired ? (int)OState.Canceled :
-                o.Status == Binance.Net.Enums.OrderStatus.PartiallyFilled ? (int)OState.Open : (int)OState.Error;
+                o.Status == Binance.Net.Enums.OrderStatus.New ? OState.Open :
+                o.Status == Binance.Net.Enums.OrderStatus.Filled ? OState.Filled :
+                o.Status == Binance.Net.Enums.OrderStatus.Canceled ? OState.Canceled :
+                o.Status == Binance.Net.Enums.OrderStatus.Rejected ? OState.Canceled :
+                o.Status == Binance.Net.Enums.OrderStatus.Expired ? OState.Canceled :
+                o.Status == Binance.Net.Enums.OrderStatus.PartiallyFilled ? OState.Open : OState.Error;
         }
         public Order(BinanceStreamOrderUpdate o, int uid, bool sm = true)
         {
@@ -43,17 +44,17 @@ namespace CaOrdersServer
             qty = o.Quantity;
             dt_create = o.CreateTime;
             state =
-                o.Status == Binance.Net.Enums.OrderStatus.New ? (int)OState.Open :
-                o.Status == Binance.Net.Enums.OrderStatus.Filled ? (int)OState.Filled :
-                o.Status == Binance.Net.Enums.OrderStatus.Canceled ? (int)OState.Canceled :
-                o.Status == Binance.Net.Enums.OrderStatus.Rejected ? (int)OState.Canceled :
-                o.Status == Binance.Net.Enums.OrderStatus.Expired ? (int)OState.Canceled :
-                o.Status == Binance.Net.Enums.OrderStatus.PartiallyFilled ? (int)OState.Open : (int)OState.Error;
+                o.Status == Binance.Net.Enums.OrderStatus.New ? OState.Open :
+                o.Status == Binance.Net.Enums.OrderStatus.Filled ? OState.Filled :
+                o.Status == Binance.Net.Enums.OrderStatus.Canceled ? OState.Canceled :
+                o.Status == Binance.Net.Enums.OrderStatus.Rejected ? OState.Canceled :
+                o.Status == Binance.Net.Enums.OrderStatus.Expired ? OState.Canceled :
+                o.Status == Binance.Net.Enums.OrderStatus.PartiallyFilled ? OState.Open : OState.Error;
 
             if (o.Status == Binance.Net.Enums.OrderStatus.Filled) dt_exec = o.UpdateTime;
         }
         //---------------------------------
-        public Order(KucoinOrder o)
+        public Order(KucoinOrder o, int uid = 0)
         {
             ord_id = o.Id.ToString();
             clientOrd_id = o.ClientOrderId?.ToString();
@@ -64,8 +65,8 @@ namespace CaOrdersServer
             price = (decimal)o.Price!;
             qty = (decimal)o.Quantity!;
             dt_create = o.CreateTime;
-            state =
-                (bool)o.IsActive! ? (int)OState.Open : (int)OState.Filled;
+            state = G._B(o.IsActive) ? OState.Open :
+                o.Quantity == o.QuantityFilled ? OState.Filled : OState.Canceled;
         }
         public Order(KucoinStreamOrderBaseUpdate o, int uid)
         {
@@ -73,16 +74,24 @@ namespace CaOrdersServer
 
             ord_id = o.OrderId;
             exchange = 2;
-            symbol = o.Symbol;
-            spotmar = true; // TODO
+            symbol = o.Symbol; 
+            //spotmar = true; // TODO это сокет он изменит существующий ордер
             buysel = o.Side == Kucoin.Net.Enums.OrderSide.Buy;
             price = o.Price;
             qty = o.Quantity;
             dt_create = o.OrderTime;
-            state =
-                o.Status == Kucoin.Net.Enums.ExtendedOrderStatus.Open ? (int)OState.Open :
-                o.Status == Kucoin.Net.Enums.ExtendedOrderStatus.Done ? (int)OState.Filled :
-                o.UpdateType == Kucoin.Net.Enums.MatchUpdateType.Canceled ? (int)OState.Canceled : (int)OState.Open;
+
+            OState stu =
+                o.UpdateType == MatchUpdateType.Filled ? OState.Filled :
+                o.UpdateType == MatchUpdateType.Canceled ? OState.Canceled :
+                o.UpdateType == MatchUpdateType.Open ? OState.Open : OState.NotFound;
+
+            OState sts =
+                o.Status == ExtendedOrderStatus.Open ? OState.Open :
+                o.Status == ExtendedOrderStatus.Done && stu == OState.Filled ? OState.Filled :
+                o.Status == ExtendedOrderStatus.Done && stu == OState.Canceled ? OState.Canceled : OState.NotFound;
+
+            state = sts;
         }
         //---------------------------------
         public Order(HuobiOrder o)
@@ -95,12 +104,12 @@ namespace CaOrdersServer
             price = o.Price;
             qty = o.Quantity;
             dt_create = o.CreateTime;
-            state = o.State == Huobi.Net.Enums.OrderState.Created ? (int)OState.Open :
-                    o.State == Huobi.Net.Enums.OrderState.Filled ? (int)OState.Filled :
-                    o.State == Huobi.Net.Enums.OrderState.Submitted ? (int)OState.Open :
-                    o.State == Huobi.Net.Enums.OrderState.Rejected ? (int)OState.Canceled :
-                    o.State == Huobi.Net.Enums.OrderState.Canceled ? (int)OState.Canceled :
-                    o.State == Huobi.Net.Enums.OrderState.PartiallyFilled ? (int)OState.Open : (int)OState.NotFound;
+            state = o.State == Huobi.Net.Enums.OrderState.Created ? OState.Open :
+                    o.State == Huobi.Net.Enums.OrderState.Filled ? OState.Filled :
+                    o.State == Huobi.Net.Enums.OrderState.Submitted ? OState.Open :
+                    o.State == Huobi.Net.Enums.OrderState.Rejected ? OState.Canceled :
+                    o.State == Huobi.Net.Enums.OrderState.Canceled ? OState.Canceled :
+                    o.State == Huobi.Net.Enums.OrderState.PartiallyFilled ? OState.Open : OState.NotFound;
         }
         public Order(HuobiOpenOrder o)
         {
@@ -112,12 +121,12 @@ namespace CaOrdersServer
             price = o.Price;
             qty = o.Quantity;
             dt_create = o.CreateTime;
-            state = o.State == Huobi.Net.Enums.OrderState.Created ? (int)OState.Open :
-                    o.State == Huobi.Net.Enums.OrderState.Filled ? (int)OState.Filled :
-                    o.State == Huobi.Net.Enums.OrderState.Submitted ? (int)OState.Open :
-                    o.State == Huobi.Net.Enums.OrderState.Rejected ? (int)OState.Canceled :
-                    o.State == Huobi.Net.Enums.OrderState.Canceled ? (int)OState.Canceled :
-                    o.State == Huobi.Net.Enums.OrderState.PartiallyFilled ? (int)OState.Open : (int)OState.NotFound;
+            state = o.State == Huobi.Net.Enums.OrderState.Created ? OState.Open :
+                    o.State == Huobi.Net.Enums.OrderState.Filled ? OState.Filled :
+                    o.State == Huobi.Net.Enums.OrderState.Submitted ? OState.Open :
+                    o.State == Huobi.Net.Enums.OrderState.Rejected ? OState.Canceled :
+                    o.State == Huobi.Net.Enums.OrderState.Canceled ? OState.Canceled :
+                    o.State == Huobi.Net.Enums.OrderState.PartiallyFilled ? OState.Open : OState.NotFound;
         }
         public Order(HuobiSubmittedOrderUpdate o, int uid)
         {
@@ -131,12 +140,12 @@ namespace CaOrdersServer
             price = o.Price;
             qty = (decimal)o.Quantity!;
             dt_create = o.CreateTime;
-            state = o.Status == Huobi.Net.Enums.OrderState.Created ? (int)OState.Open :
-                    o.Status == Huobi.Net.Enums.OrderState.Filled ? (int)OState.Filled :
-                    o.Status == Huobi.Net.Enums.OrderState.Submitted ? (int)OState.Open :
-                    o.Status == Huobi.Net.Enums.OrderState.Rejected ? (int)OState.Canceled :
-                    o.Status == Huobi.Net.Enums.OrderState.Canceled ? (int)OState.Canceled :
-                    o.Status == Huobi.Net.Enums.OrderState.PartiallyFilled ? (int)OState.Open : (int)OState.NotFound;
+            state = o.Status == Huobi.Net.Enums.OrderState.Created ? OState.Open :
+                    o.Status == Huobi.Net.Enums.OrderState.Filled ? OState.Filled :
+                    o.Status == Huobi.Net.Enums.OrderState.Submitted ? OState.Open :
+                    o.Status == Huobi.Net.Enums.OrderState.Rejected ? OState.Canceled :
+                    o.Status == Huobi.Net.Enums.OrderState.Canceled ? OState.Canceled :
+                    o.Status == Huobi.Net.Enums.OrderState.PartiallyFilled ? OState.Open : OState.NotFound;
         }
     }
     ///////////////////////////////////////////
@@ -158,9 +167,9 @@ namespace CaOrdersServer
             {
                 listOrdersComaSeparated += "'" + o.ord_id + "',";
             }
-            listOrdersComaSeparated += 0;
+            listOrdersComaSeparated += "'0'";
             G.db_exec(
-                @$"update Orders set state = -1, dtu = getdate() 
+                @$"update Orders set state = 3, dtu = getdate() 
                    where usr_id={_user.ID} and exchange={exchan} 
                     and not ord_id in ({listOrdersComaSeparated})"
             );
@@ -171,7 +180,7 @@ namespace CaOrdersServer
             o.usr_id = _user.ID;
             base.Add(o);
 
-            o.Update();
+            o.Update($"Caller({o.exchange})");
 
             o.OnProgress += OnProgress;
         }

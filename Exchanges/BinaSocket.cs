@@ -57,7 +57,7 @@ namespace CaOrdersServer
 			}
             else
             {
-				OnMessage?.Invoke($"Create {(spotMarg ? "Spot" : "Marg")}  Listen Key for {_user.Name} failed - {res.Error?.Message}");
+				OnMessage?.Invoke($"Bina({_user.Name}): Create {(spotMarg ? "Spot" : "Marg")}  Listen Key failed - {res.Error?.Message}");
 				return false;
             }
 			return true;
@@ -88,13 +88,13 @@ namespace CaOrdersServer
 					else
 						_socketSubscrMarg = res.Data; 
 
-					OnMessage?.Invoke($"Binance: {(spotMarg ? "Spot" : "Marg")} socket for {_user.Name} init ok");
+					OnMessage?.Invoke($"Bina({_user.Name}): {(spotMarg ? "Spot" : "Marg")} socket init ok");
 
 					Task.Run(() => KeepAlive(minutesToReconnect));
 				}
 				else
 				{
-					string msg = $"Binance: Error in SubscribeToUserDataUpdatesAsync: {res.Error?.Message}";
+					string msg = $"Bina({_user.Name}): Error in SubscribeToUserDataUpdatesAsync: {res.Error?.Message}";
 					OnMessage?.Invoke(msg);
 					Log.Write(msg, _user.ID);
 					return false;
@@ -106,15 +106,15 @@ namespace CaOrdersServer
 		}
 		private void OnOrderUpdate(BinanceStreamOrderUpdate ord, bool spotMarg) 
 		{
-			bool newOrUpdated = new Order(ord, _user.ID, spotMarg).Update();
+			bool newOrUpdated = new Order(ord, _user.ID, spotMarg).Update("BinaSocket");
 			if (newOrUpdated)
-				OnMessage?.Invoke($"Binance({_user.Name}): New Order #{ord.Id} added in state {ord.Status}");
+				OnMessage?.Invoke($"Bina({_user.Name}): New Order({ord.Symbol}/{ord.Side}/{ord.Price}) state {ord.Status}");
 			else
-				OnMessage?.Invoke($"Binance({_user.Name}): Order #{ord.Id} updated to {ord.Status}");
+				OnMessage?.Invoke($"Bina({_user.Name}): Order({ord.Symbol}/{ord.Side}/{ord.Price}) updated to {ord.Status}");
 		}
 		private void OnAccountUpdate(BinanceStreamPositionsUpdate acc)
         {
-			OnMessage?.Invoke($"Binance({_user.Name}): Account position updated");
+			OnMessage?.Invoke($"Bina({_user.Name}): Account position updated");
 
 			foreach (BinanceStreamBalance b in acc.Balances.ToList())
 			{
@@ -127,7 +127,7 @@ namespace CaOrdersServer
 			_socketSubscrSpot?.ReconnectAsync();
 			_socketSubscrMarg?.ReconnectAsync();
 
-			OnMessage?.Invoke($"Binance({_user.Name}) socket reconnected");
+			OnMessage?.Invoke($"Bina({_user.Name}) socket reconnected");
 			KeepAlive(minutesToReconnect);
 		}
 		public void Dispose(bool setNull = true)

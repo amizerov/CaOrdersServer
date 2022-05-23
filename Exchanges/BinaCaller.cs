@@ -61,17 +61,21 @@ namespace CaOrdersServer
             }
             return balances;
         }
+        public Order GetOrder(string oid) 
+        {
+            return new Order();
+        }
         public Orders GetOrders()
         {
             Orders orders = new(_user);
             if (_apiKey.IsWorking)
             {
-                OnProgress?.Invoke($"Binance({_user.Name}): GetOrders started");
+                OnProgress?.Invoke($"Bina({_user.Name}): GetOrders started");
 
                 List<string> symbols = GetUserTradedSymbols();
                 foreach (var symbo in symbols)
                 {
-                    bool orderFound = false;
+                    int orderFound = 0;
                     var resSpot = _restClient!.SpotApi.Trading.GetOrdersAsync(symbo).Result;
                     if (resSpot.Success)
                     {
@@ -79,13 +83,13 @@ namespace CaOrdersServer
                             foreach(var o in resSpot.Data)
                             {
                                 orders.Add(new Order(o, true));
-                                orderFound = true;
+                                orderFound = orders.Count;
                             }
                         else
-                            OnProgress?.Invoke($"Binance({_user.Name}): SPOT {symbo} resSpot.Data == NULL");
+                            OnProgress?.Invoke($"Bina({_user.Name}): SPOT {symbo} GetOrders Error: resSpot.Data == NULL");
                     }
                     else
-                        OnProgress?.Invoke($"Binance({_user.Name}): SPOT {symbo} Error: {resSpot.Error?.Message}");
+                        OnProgress?.Invoke($"Bina({_user.Name}): SPOT {symbo} GetOrders Error: {resSpot.Error?.Message}");
 
 
                     if (IsAccountMargine())
@@ -97,20 +101,20 @@ namespace CaOrdersServer
                                 foreach (var o in resMarg.Data)
                                 {
                                     orders.Add(new Order(o, false));
-                                    orderFound = true;
+                                    orderFound = orders.Count;
                                 }
                             else
-                                OnProgress?.Invoke($"Binance({_user.Name}): MARG {symbo} resMarg.Data == NULL");
+                                OnProgress?.Invoke($"Bina({_user.Name}): MARG {symbo} GetMarginOrders Error: resMarg.Data == NULL");
                         }
                         else
-                            OnProgress?.Invoke($"Binance({_user.Name}): MARG {symbo} Error: {resMarg.Error?.Message}");
+                            OnProgress?.Invoke($"Bina({_user.Name}): MARG {symbo} GetMarginOrders Error: {resMarg.Error?.Message}");
                     }
-                    if (orderFound)
-                        OnProgress?.Invoke($"Binance({_user.Name}): orders found for {symbo}");
+                    if (orderFound > 0)
+                        OnProgress?.Invoke($"Bina({_user.Name}): {orderFound} orders found for {symbo}");
 
                     Thread.Sleep(1000);
                 }
-                OnProgress?.Invoke($"Binance({_user.Name}): GetOrders orders.Count = {orders.Count}");
+                OnProgress?.Invoke($"Bina({_user.Name}): GetOrders orders.Count = {orders.Count}");
             }
             return orders;
         }

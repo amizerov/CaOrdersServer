@@ -24,7 +24,12 @@ namespace CaOrdersServer
             }
             set
             {
-                string sql = $"update UserKeys set IsWorking = {(value ? 1 : 0)} where ID={ID}";
+                string sql = @$"
+                    update UserKeys set 
+                        IsWorking = {(value ? 1 : 0)},
+                        CheckedAt = getdate()
+                    where ID={ID}";
+
                 G.db_exec(sql);
             }
         }
@@ -33,11 +38,6 @@ namespace CaOrdersServer
             get
             {
                 return G._D(G.db_select($"select CheckedAt from UserKeys where ID={ID}"));
-            }
-            set
-            {
-                string sql = $"update UserKeys set CheckedAt = '{value.ToString("yyyy-MM-dd hh:mm:ss")}' where ID={ID}";
-                G.db_exec(sql);
             }
         }
         public ApiKey() { }

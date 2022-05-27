@@ -5,14 +5,15 @@ namespace CaOrdersServer
 {
     public class User
     {
-        public event Action<string>? OnProgress;
+        public event Action<Message>? OnProgress;
+        void Progress(Message msg) => OnProgress?.Invoke(msg);
 
         public int ID;
         public string Name;
         public string Email;
         public List<ApiKey> ApiKeys = new();
 
-        public List<Exchange> Exchanges = new(); 
+        public List<Exchange> Exchanges = new();
 
         public User(DataRow r)
         {
@@ -32,20 +33,19 @@ namespace CaOrdersServer
                 if (exc.CheckApiKeys())
                 {
                     Exchanges.Add(exc);
-                    exc.OnCallerProgress += OnCallerProgress;
-                    exc.OnSocketMessage += OnSpcketMessage;
+                    exc.OnProgress += Progress;
                 }
             }
 
-            OnProgress?.Invoke($"User {Name} created");
+            OnProgress?.Invoke(new Message(4, this, Exch.none, "User", $"User created"));
         }
 
         /******************************************************* 
          * One time call functions ->
          *******************************************************/
-        public bool CheckApiKeys(int exc) 
+        public bool CheckApiKeys(Exch exc) 
         {
-            Exchange? exch = Exchanges.Find(e => e.ID == exc);
+            Exchange? exch = Exchanges.Find(e => e.ID == (int)exc);
             if(exch == null)
                 return false;
             else
@@ -57,36 +57,34 @@ namespace CaOrdersServer
          * потом их статусы обновляются через сокет.
          * Совмещен вызов для спота и маржина.
          */
-        public void UpdateOrders(int exc)
+        public void UpdateOrders(Exch exc)
         {
-            Exchange? exch = Exchanges.Find(e => e.ID == exc);
-            if(exch != null)
+            Exchange? excha = Exchanges.Find(e => e.ID == (int)exc);
+            if(excha != null)
                 Task.Run(() =>
                 {
-                    OnProgress?.Invoke($"{exch.Name}({Name}) UpdateOrders start");
-                    exch.UpdateOrders();
-                    OnProgress?.Invoke($"{exch.Name}({Name}) UpdateOrders end");
+                    OnProgress?.Invoke(new Message(4, this, exc, "UpdateOrders", "start"));
+                    excha.UpdateOrders();
+                    OnProgress?.Invoke(new Message(4, this, exc, "UpdateOrders", "end"));
                 });
         }
         // <--------------------------
 
-        public bool StartListenOrders(int exc)
+        public bool StartListenOrders(Exch exc)
         {
-            Exchange? exch = Exchanges.Find(e => e.ID == exc);
+            Exchange? exch = Exchanges.Find(e => e.ID == (int)exc);
             if (exch == null)
                 return false;
             else
                 return exch.InitOrdersListener();
         }
-
-        void OnCallerProgress(string msg) => OnProgress?.Invoke("C| " + msg);
-        void OnSpcketMessage(string msg) => OnProgress?.Invoke("S| " + msg);
-        void OnOrderProgress(string msg) => OnProgress?.Invoke("O| " + msg);
     }
 
     public class Users : List<User>
     {
-        public event Action<string>? OnProgress;
+        public event Action<Message>? OnProgress;
+        void Progress(Message msg) => OnProgress?.Invoke(msg);
+
         public Users()
         {
             string sql = "select distinct u.* from Users u join UserKeys k on u.id = k.usr_id where IsConfirmed = 1";
@@ -96,9 +94,8 @@ namespace CaOrdersServer
                 User user = new User(r);
                 Add(user);
 
-                user.OnProgress += OnUserProgress;
+                user.OnProgress += Progress;
             }
         }
-        void OnUserProgress(string msg) => OnProgress?.Invoke(msg);
     }
- }
+}

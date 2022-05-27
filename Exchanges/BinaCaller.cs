@@ -9,7 +9,7 @@ namespace CaOrdersServer
 {
     public class BinaCaller : IApiCaller
     {
-        public event Action<string>? OnProgress;
+        public event Action<Message>? OnProgress;
 
         protected User _user;
         protected ApiKey _apiKey;
@@ -18,7 +18,7 @@ namespace CaOrdersServer
 
         public BinaCaller(User usr) { 
             _user = usr;
-            _apiKey = _user.ApiKeys.Find(k => k.Exchange == "Bina") ?? new();
+            _apiKey = _user.ApiKeys.Find(k => k.Exchange == Exch.Bina) ?? new();
         }
         public bool CheckApiKey()
         {
@@ -35,7 +35,8 @@ namespace CaOrdersServer
                 }
                 catch (Exception ex)
                 {
-                    OnProgress?.Invoke($"CheckApiKey({_apiKey.Exchange}/{_user.Name}) Error: {ex.Message}");
+                    OnProgress?.Invoke(new Message(1, _user, Exch.Bina, "CheckApiKey", $"Error: {ex.Message}"));
+
                     return false;
                 }
                 // Если получен доступ к балансам, ключ считается рабочим
@@ -44,7 +45,8 @@ namespace CaOrdersServer
 
                 _apiKey.IsWorking = res;
             }
-            OnProgress?.Invoke($"CheckApiKey({_apiKey.Exchange}/{_user.Name}) Key.IsWorking: {_apiKey.IsWorking}");
+            OnProgress?.Invoke(new Message(1, _user, Exch.Bina, "CheckApiKey", $"Key.IsWorking: {_apiKey.IsWorking}"));
+
             return res;
         }
         List<BinanceBalance> GetBalances()
@@ -57,7 +59,8 @@ namespace CaOrdersServer
             }
             else
             {
-                OnProgress?.Invoke($"Bina({_user.Name}) Error GetAccountInfoAsync: {res.Error?.Message}");
+                OnProgress?.Invoke(new Message(1, _user, Exch.Bina, "GetBalances", 
+                    $"Error GetAccountInfoAsync: {res.Error?.Message}"));
             }
             return balances;
         }
@@ -67,10 +70,10 @@ namespace CaOrdersServer
         }
         public Orders GetOrders()
         {
-            Orders orders = new(_user);
+            Orders orders = new(_user); orders.OnProgress += OnProgress;
             if (_apiKey.IsWorking)
             {
-                OnProgress?.Invoke($"Bina({_user.Name}): GetOrders started");
+                OnProgress?.Invoke(new Message(1, _user, Exch.Bina, "GetOrders", "GetOrders started"));
 
                 List<string> symbols = GetUserTradedSymbols();
                 foreach (var symbo in symbols)
@@ -86,10 +89,12 @@ namespace CaOrdersServer
                                 orderFound = orders.Count;
                             }
                         else
-                            OnProgress?.Invoke($"Bina({_user.Name}): SPOT {symbo} GetOrders Error: resSpot.Data == NULL");
+                            OnProgress?.Invoke(new Message(1, _user, Exch.Bina, "GetOrders", 
+                                "SPOT {symbo} GetOrders Error: resSpot.Data == NULL"));
                     }
                     else
-                        OnProgress?.Invoke($"Bina({_user.Name}): SPOT {symbo} GetOrders Error: {resSpot.Error?.Message}");
+                        OnProgress?.Invoke(new Message(1, _user, Exch.Bina, "GetOrders", 
+                            $"SPOT {symbo} GetOrders Error: {resSpot.Error?.Message}"));
 
 
                     if (IsAccountMargine())
@@ -104,17 +109,21 @@ namespace CaOrdersServer
                                     orderFound = orders.Count;
                                 }
                             else
-                                OnProgress?.Invoke($"Bina({_user.Name}): MARG {symbo} GetMarginOrders Error: resMarg.Data == NULL");
+                                OnProgress?.Invoke(new Message(1, _user, Exch.Bina, "GetOrders", 
+                                    $"MARG {symbo} GetMarginOrders Error: resMarg.Data == NULL"));
                         }
                         else
-                            OnProgress?.Invoke($"Bina({_user.Name}): MARG {symbo} GetMarginOrders Error: {resMarg.Error?.Message}");
+                            OnProgress?.Invoke(new Message(1, _user, Exch.Bina, "GetOrders",
+                                $"MARG {symbo} GetMarginOrders Error: {resMarg.Error?.Message}"));
                     }
                     if (orderFound > 0)
-                        OnProgress?.Invoke($"Bina({_user.Name}): {orderFound} orders found for {symbo}");
+                        OnProgress?.Invoke(new Message(1, _user, Exch.Bina, "GetOrders", 
+                            $"{orderFound} orders found for {symbo}"));
 
                     Thread.Sleep(1000);
                 }
-                OnProgress?.Invoke($"Bina({_user.Name}): GetOrders orders.Count = {orders.Count}");
+                OnProgress?.Invoke(new Message(1, _user, Exch.Bina, "GetOrders",
+                    $"GetOrders orders.Count = {orders.Count}"));
             }
             return orders;
         }

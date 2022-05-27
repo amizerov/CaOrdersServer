@@ -6,8 +6,7 @@ namespace CaOrdersServer
     public class ApiKey
     {
         public int ID = 0;
-        public string Exchange = "";
-        public int ExchangeId = 0;
+        public Exch Exchange;
         public string Key = "1";
         public string Secret = "1";
         public string PassPhrase = "";
@@ -44,10 +43,9 @@ namespace CaOrdersServer
         public ApiKey(DataRow k)
         {
             ID = G._I(k["ID"]);
-            Exchange = G._S(k["Exchange"]);
-            ExchangeId = G._I(k["ExchangeId"]);
             Key = G._S(k["ApiKey"]);
             Secret = G._S(k["ApiSecret"]);
+            Exchange = (Exch)G._I(k["ExchangeId"]);
             PassPhrase = G._S(k["ApiPassPhrase"]);
         }
     }

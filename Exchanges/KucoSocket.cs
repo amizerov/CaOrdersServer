@@ -9,7 +9,7 @@ namespace CaOrdersServer
 {
 	public class KucoSocket : IApiSocket
 	{
-		public event Action<string>? OnMessage;
+		public event Action<Message>? OnProgress;
 
 		User _user;
 		ApiKey _apiKey;
@@ -20,7 +20,7 @@ namespace CaOrdersServer
 		public KucoSocket(User usr)
 		{
 			_user = usr;
-			_apiKey = _user.ApiKeys.Find(k => k.Exchange == "Kuco") ?? new();
+			_apiKey = _user.ApiKeys.Find(k => k.Exchange == Exch.Kuco) ?? new();
 		}
 		public bool InitOrdersListener(int minutesToReconnect = 20)
 		{
@@ -51,18 +51,21 @@ namespace CaOrdersServer
 							}
 							o.Update("KucoSocket");
 
-							OnMessage?.Invoke($"Kuco({_user.Name}): Order({ord.Symbol}/{ord.Side}/{ord.Price}) updated to {o.state}|{ord.Status}");
+							OnProgress?.Invoke(new Message(2, _user, Exch.Kuco, "InitOrdersListener",
+								$"Order({ord.Symbol}/{ord.Side}/{ord.Price}) updated to {o.state}|{ord.Status}"));
 						},
 						onTradeData =>
 						{
 							KucoinStreamOrderMatchUpdate trd = onTradeData.Data;
-							OnMessage?.Invoke($"Kuco({_user.Name}): Trade({trd.Symbol}/{trd.Side}/{trd.Price}) updated to {trd.Status}");
+							OnProgress?.Invoke(new Message(2, _user, Exch.Kuco, "InitOrdersListener", 
+								$"Trade({trd.Symbol}/{trd.Side}/{trd.Price}) updated to {trd.Status}"));
 						}
 					).Result;
 					if (res.Success)
 					{
 						_socketSubscr = res.Data;
-						OnMessage?.Invoke($"Kuco({_user.Name}): socket init ok");
+						OnProgress?.Invoke(new Message(2, _user, Exch.Kuco, 
+							"InitOrdersListener", $"Kuco({_user.Name}): socket init ok"));
 
 						Task.Run(() => KeepAlive(minutesToReconnect));
 
@@ -70,17 +73,15 @@ namespace CaOrdersServer
 					}
 					else
 					{
-						string msg = $"Kuco({_user.Name}): Error in SubscribeToUserData: \r\n{res.Error?.Message}";
-						OnMessage?.Invoke(msg);
-						Log.Write(msg, _user.ID);
+						OnProgress?.Invoke(new Message(2, _user, Exch.Kuco, 
+							"InitOrdersListener", $"Error in SubscribeToUserData: \r\n{res.Error?.Message}"));
 					}
 				}
 			}
 			catch (Exception ex)
             {
-				string msg = $"Kuco({_user.Name}): Exception in SubscribeToUserData: \r\n{ex.Message}";
-				OnMessage?.Invoke(msg);
-				Log.Write(msg, _user.ID);
+				OnProgress?.Invoke(new Message(2, _user, Exch.Kuco, 
+					"InitOrdersListener", $"Exception in SubscribeToUserData: \r\n{ex.Message}"));
 			}
 			return b;
 		}
@@ -89,7 +90,9 @@ namespace CaOrdersServer
 			Thread.Sleep(minutesToReconnect * 60 * 1000);
 			_socketSubscr?.ReconnectAsync();
 
-			OnMessage?.Invoke($"Kuco({_user.Name}) socket reconnected");
+			OnProgress?.Invoke(new Message(2, _user, Exch.Kuco, 
+				"KeepAlive", $"Kuco({_user.Name}) socket reconnected"));
+
 			KeepAlive(minutesToReconnect);
 		}
 
@@ -100,7 +103,8 @@ namespace CaOrdersServer
 				_socketClient.UnsubscribeAllAsync();
 				if (setNull) _socketClient = null;
 
-				OnMessage?.Invoke($"Kuco({_user.Name}) socket disposed");
+				OnProgress?.Invoke(new Message(2, _user, Exch.Kuco, 
+					"Dispose", $"Kuco({_user.Name}) socket disposed"));
 			}
 		}
 	}

@@ -9,7 +9,7 @@ namespace CaOrdersServer
 {
 	public class HuobSocket : IApiSocket
 	{
-		public event Action<string>? OnMessage;
+		public event Action<Message>? OnProgress;
 
 		User _user;
 		ApiKey _apiKey;
@@ -20,7 +20,7 @@ namespace CaOrdersServer
 		public HuobSocket(User usr)
 		{
 			_user = usr;
-			_apiKey = _user.ApiKeys.Find(k => k.Exchange == "Kuco") ?? new();
+			_apiKey = _user.ApiKeys.Find(k => k.Exchange == Exch.Kuco) ?? new();
 
 			if (_apiKey.IsWorking)
 			{
@@ -46,13 +46,14 @@ namespace CaOrdersServer
 						HuobiSubmittedOrderUpdate ord = onOrderUpdateMessage.Data;
 						new Order(ord, _user.ID).Update("HuobSocket");
 
-						OnMessage?.Invoke($"Huob({_user.Name}): Order({ord.Symbol}/{ord.Side}/{ord.Price}) updated to {ord.Status}");
+						OnProgress?.Invoke(new Message(2, _user, Exch.Huob, "InitOrdersListener",
+							$"Order({ord.Symbol}/{ord.Side}/{ord.Price}) updated to {ord.Status}"));
 					}
 				).Result;
 				if (res.Success)
 				{
 					_socketSubscr = res.Data;
-					OnMessage?.Invoke($"Huob({_user.Name}): socket init ok");
+					OnProgress?.Invoke(new Message(2, _user, Exch.Huob, "InitOrdersListener", "socket init ok"));
 
 					Task.Run(() => KeepAlive(minutesToReconnect));
 
@@ -60,16 +61,14 @@ namespace CaOrdersServer
 				}
 				else
 				{
-					string msg = $"Huob({_user.Name}): Error in SubscribeToUserDataUpdatesAsync: {res.Error?.Message}";
-					OnMessage?.Invoke(msg);
-					Log.Write(msg, _user.ID);
+					OnProgress?.Invoke(new Message(2, _user, Exch.Huob, "InitOrdersListener", 
+						$"Error in SubscribeToUserDataUpdatesAsync: {res.Error?.Message}"));
 				}
 			}
 			catch (Exception ex)
 			{
-				string msg = $"Huob({_user.Name}): Exception in SubscribeToUserDataUpdatesAsync: {ex.Message}";
-				OnMessage?.Invoke(msg);
-				Log.Write(msg, _user.ID);
+				OnProgress?.Invoke(new Message(2, _user, Exch.Huob, "InitOrdersListener", 
+					$"Exception in SubscribeToUserDataUpdatesAsync: {ex.Message}"));
 			}
 			return b;
 		}
@@ -78,7 +77,7 @@ namespace CaOrdersServer
 			Thread.Sleep(minutesToReconnect * 60 * 1000);
 			_socketSubscr?.ReconnectAsync();
 
-			OnMessage?.Invoke($"Huob({_user.Name}) socket reconnected");
+			OnProgress?.Invoke(new Message(2, _user, Exch.Huob, "KeepAlive", $"Huob({_user.Name}) socket reconnected"));
 			KeepAlive(minutesToReconnect);
 		}
 		public void Dispose(bool setNull = true)
@@ -88,7 +87,7 @@ namespace CaOrdersServer
 				_socketClient.UnsubscribeAllAsync();
 				if (setNull) _socketClient = null;
 
-				OnMessage?.Invoke($"Huob({_user.Name}) socket disposed");
+				OnProgress?.Invoke(new Message(2, _user, Exch.Huob, "Dispose", $"Huob({_user.Name}) socket disposed"));
 			}
 		}
 	}

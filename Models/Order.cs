@@ -11,6 +11,8 @@ namespace CaOrdersServer
 {
     public class Order : CaOrder
     {
+        public User? User;
+        public event Action<Message>? OnProgress;
         public Order() { }
         //---------------------------------
         public Order(BinanceOrder o, bool sm = true /*spot, false - marg*/)
@@ -60,6 +62,8 @@ namespace CaOrdersServer
         //---------------------------------
         public Order(KucoinOrder o, int uid = 0)
         {
+            usr_id = uid;
+
             ord_id = o.Id.ToString();
             clientOrd_id = o.ClientOrderId?.ToString();
             exchange = 2; // 1 - Bina, 2 - Kuco, 3 - Huob
@@ -160,11 +164,69 @@ namespace CaOrdersServer
                     o.Status == Huobi.Net.Enums.OrderState.Canceled ? OState.Canceled :
                     o.Status == Huobi.Net.Enums.OrderState.PartiallyFilled ? OState.Open : OState.NotFound;
         }
+        //---------------------------------
+        public bool Update(string src = "*")
+        {/* Создает новый или обновляет существующий ордер
+          */
+            bool newOrUpdated = true;
+            using (CaDbConnector db = new CaDbConnector())
+            {
+                CaOrder? o = db.Orders!.Where(x =>
+                                x.usr_id == usr_id &&
+                                x.symbol == symbol &&
+                                x.ord_id == ord_id &&
+                                x.exchange == exchange).FirstOrDefault();
+                string msg = "";
+                if (o != null)
+                {
+                    if (o.state != state) msg = "state"; o.state = state;
+                    if (o.dt_exec != dt_exec) msg = "dt_exec"; o.dt_exec = dt_exec;
+
+                    // эти поля ордера измениться не могут
+                    o.spotmar = spotmar; // но могли быть ранее заданы в базе не верно
+
+                    if (msg == "state")
+                    {
+                        int stt = (int)o.state;
+                        G.db_exec($"insert OrderStateHistory(oid, state, src) values({o.id}, {stt}, '{src}')");
+                    }
+                    if (msg.Length > 0)
+                    {
+                        o.dtu = DateTime.Now;
+                        msg = $"{exchange}({usr_id}): Order({symbol}|{buysel}|{price}) {msg} updated";
+                    }
+                }
+                else
+                {
+                    db.Orders!.Add(this);
+                    newOrUpdated = false;
+
+                    msg = $"{Exchange.GetName(exchange)}({usr_id}): New Order({symbol}|{buysel}|{price}) found";
+                }
+                if (msg.Length > 0)
+                {
+                    OnProgress?.Invoke(new Message(3, this.User!, (Exch)exchange, "Order.Update", msg));
+                    try
+                    {
+                        db.SaveChanges();
+                    }
+                    catch (Exception ex)
+                    {
+                        msg = msg + "\r\n" + "Error: " + ex.Message;
+                        OnProgress?.Invoke(new Message(3, this.User!, (Exch)exchange, "Order.Update", msg));
+                    }
+                }
+
+                return newOrUpdated;
+            }
+        }
+
     }
     ///////////////////////////////////////////
     public class Orders : List<Order>
     {
-        public event Action<string>? OnProgress;
+        public event Action<Message>? OnProgress;
+        void Progress(Message msg) => OnProgress?.Invoke(msg);
 
         // Список содержит все ордера юзера, полученные с биржи
         private User _user;
@@ -175,27 +237,40 @@ namespace CaOrdersServer
         }
         public void Update()
         {
+            int cnt = this.Count;
+            int opn = this.Where(o => o.state == OState.Open).Count();
+            int can = this.Where(o => o.state == OState.Canceled).Count();
+            int fil = this.Where(o => o.state == OState.Filled).Count();
+
             string listOrdersComaSeparated = "";
             foreach (var o in this)
             {
                 listOrdersComaSeparated += "'" + o.ord_id + "',";
             }
             listOrdersComaSeparated += "'0'";
-            G.db_exec(
+
+            int not = G._I(G.db_select(
                 @$"update Orders set state = 3, dtu = getdate() 
                    where usr_id={_user.ID} and exchange={exchan} 
-                    and not ord_id in ({listOrdersComaSeparated})"
-            );
+                    and not ord_id in ({listOrdersComaSeparated})
+                
+                select @@ROWCOUNT
+                "
+            ));
+
+            OnProgress?.Invoke(new Message(3, _user, (Exch)exchan, 
+                "Order.Update", $"GetOrders all={cnt} opn={opn} can={can} fil={fil} not={not}"));
         }
         public new void Add(Order o)
         {
             exchan = o.exchange;
             o.usr_id = _user.ID;
+            o.User = _user;
+
             base.Add(o);
 
+            o.OnProgress += Progress;
             o.Update($"Caller({o.exchange})");
-
-            o.OnProgress += OnProgress;
         }
 
     }

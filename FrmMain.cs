@@ -18,31 +18,26 @@ namespace CaOrdersServer
         {
             users.OnProgress += OnProgress;
 
-            //btnKeys_Click(sender, e);
-
             /* Update all orders
              ќдин раз при запуске грузим все ордера со всех бирж по запросу
              далее, следим за изменением статусов через сокет */
-            //btnOrder_Click(sender, e);
+            btnOrder_Click(sender, e);
 
             /* Start listen orders
              после первичной загрузки ордеров включаем сокет */
-            //btnListen_Click(sender, e);
+            btnListen_Click(sender, e);
 
-            /* Keep alive sockets
-              аждые 15 минут переподключаем сокеты по всем биржам */
-            //timer_15min.Start(); // will also check api keys
+            /*  аждые 15 минут check api keys */
+            timer_15min.Start();  
         }
 
         private void btnKeys_Click(object sender, EventArgs e)
         {
-            txtLog.Text = "";
-
             foreach (User u in users)
             {
-                u.CheckApiKeys(1);
-                u.CheckApiKeys(2);
-                u.CheckApiKeys(3);
+                u.CheckApiKeys(Exch.Bina);
+                u.CheckApiKeys(Exch.Kuco);
+                u.CheckApiKeys(Exch.Huob);
             }
         }
         private void btnOrder_Click(object sender, EventArgs e)
@@ -51,40 +46,51 @@ namespace CaOrdersServer
 
             foreach (User u in users)
             {
-                u.UpdateOrders(1);
-                u.UpdateOrders(2);
-                u.UpdateOrders(3);
+                u.UpdateOrders(Exch.Bina);
+                u.UpdateOrders(Exch.Kuco);
+                u.UpdateOrders(Exch.Huob);
             }
         }
 
         private void btnListen_Click(object sender, EventArgs e)
         {
-            txtLog.Text = "";
-            
             foreach (User u in users)
             {
-                u.StartListenOrders(1);
-                u.StartListenOrders(2);
-                u.StartListenOrders(3);
+                u.StartListenOrders(Exch.Bina);
+                u.StartListenOrders(Exch.Kuco);
+                u.StartListenOrders(Exch.Huob);
             }
-        }
-        void OnProgress(string msg)
-        {
-            msg = "[" + DateTime.Now.ToString("hh:mm:ss") + "] " + msg + "\r\n";
-            
-            Invoke(new Action(() =>
-            {
-                txtLog.Text = msg + txtLog.Text;
-            }));
         }
 
         private void timer_15min_Tick(object sender, EventArgs e)
         {
-            foreach (User u in users)
-            {
-                //u.KeepAliveSpotBina();
-            }
+            btnKeys_Click(sender, e);
         }
 
+        private void btnKuco_Click(object sender, EventArgs e)
+        {
+            users.Find(u => u.ID == 4)!.UpdateOrders(Exch.Kuco);
+        }
+
+        void OnProgress(Message msg)
+        {
+            string m = "[" + DateTime.Now.ToString("hh:mm:ss") + "] " + msg.msg + "\r\n";
+            
+            Invoke(new Action(() =>
+            {
+                switch(msg.type)
+                {
+                    case 1:
+                        txtLog.Text = msg + txtLog.Text;
+                        break;
+                    case 2:
+                        txtLog1.Text = msg + txtLog1.Text;
+                        break;
+                    case 3:
+                        txtLog2.Text = msg + txtLog2.Text;
+                        break;
+                }
+            }));
+        } 
     }
 }

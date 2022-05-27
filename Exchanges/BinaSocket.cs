@@ -9,7 +9,7 @@ namespace CaOrdersServer
 {
 	public class BinaSocket : IApiSocket
 	{
-		public event Action<string>? OnMessage;
+		public event Action<Message>? OnProgress;
 
 		User _user;
 		ApiKey _apiKey;
@@ -26,7 +26,7 @@ namespace CaOrdersServer
 		public BinaSocket(User usr)
 		{
 			_user = usr;
-			_apiKey = _user.ApiKeys.Find(k => k.Exchange == "Bina") ?? new();
+			_apiKey = _user.ApiKeys.Find(k => k.Exchange == Exch.Bina) ?? new();
 
 			if (_apiKey.IsWorking)
 			{
@@ -57,7 +57,9 @@ namespace CaOrdersServer
 			}
             else
             {
-				OnMessage?.Invoke($"Bina({_user.Name}): Create {(spotMarg ? "Spot" : "Marg")}  Listen Key failed - {res.Error?.Message}");
+				OnProgress?.Invoke(new Message(2, _user, Exch.Bina, "CreateListenKey",
+					$"Create {(spotMarg ? "Spot" : "Marg")}  Listen Key failed - {res.Error?.Message}"));
+				
 				return false;
             }
 			return true;
@@ -86,17 +88,18 @@ namespace CaOrdersServer
 					if (spotMarg)
 						_socketSubscrSpot = res.Data;
 					else
-						_socketSubscrMarg = res.Data; 
+						_socketSubscrMarg = res.Data;
 
-					OnMessage?.Invoke($"Bina({_user.Name}): {(spotMarg ? "Spot" : "Marg")} socket init ok");
+					OnProgress?.Invoke(new Message(2, _user, Exch.Bina, "SubscribeToOrdersUpdates",
+						$"{(spotMarg ? "Spot" : "Marg")} socket init ok"));
 
 					Task.Run(() => KeepAlive(minutesToReconnect));
 				}
 				else
 				{
-					string msg = $"Bina({_user.Name}): Error in SubscribeToUserDataUpdatesAsync: {res.Error?.Message}";
-					OnMessage?.Invoke(msg);
-					Log.Write(msg, _user.ID);
+					OnProgress?.Invoke(new Message(2, _user, Exch.Bina, "SubscribeToOrdersUpdates", 
+						$"Error in SubscribeToUserDataUpdatesAsync: {res.Error?.Message}"));
+					
 					return false;
 				}
 				return true;
@@ -108,13 +111,15 @@ namespace CaOrdersServer
 		{
 			bool newOrUpdated = new Order(ord, _user.ID, spotMarg).Update("BinaSocket");
 			if (newOrUpdated)
-				OnMessage?.Invoke($"Bina({_user.Name}): New Order({ord.Symbol}/{ord.Side}/{ord.Price}) state {ord.Status}");
+				OnProgress?.Invoke(new Message(2, _user, Exch.Bina, "OnOrderUpdate",
+					$"New Order({ord.Symbol}/{ord.Side}/{ord.Price}) state {ord.Status}"));
 			else
-				OnMessage?.Invoke($"Bina({_user.Name}): Order({ord.Symbol}/{ord.Side}/{ord.Price}) updated to {ord.Status}");
+				OnProgress?.Invoke(new Message(2, _user, Exch.Bina, "OnOrderUpdate", 
+					$"Order({ord.Symbol}/{ord.Side}/{ord.Price}) updated to {ord.Status}"));
 		}
 		private void OnAccountUpdate(BinanceStreamPositionsUpdate acc)
         {
-			OnMessage?.Invoke($"Bina({_user.Name}): Account position updated");
+			OnProgress?.Invoke(new Message(2, _user, Exch.Bina, "OnAccountUpdate", "Account position updated"));
 
 			foreach (BinanceStreamBalance b in acc.Balances.ToList())
 			{
@@ -127,7 +132,8 @@ namespace CaOrdersServer
 			_socketSubscrSpot?.ReconnectAsync();
 			_socketSubscrMarg?.ReconnectAsync();
 
-			OnMessage?.Invoke($"Bina({_user.Name}) socket reconnected");
+			OnProgress?.Invoke(new Message(2, _user, Exch.Bina, "OnAccountUpdate", "socket reconnected"));
+
 			KeepAlive(minutesToReconnect);
 		}
 		public void Dispose(bool setNull = true)
@@ -136,6 +142,8 @@ namespace CaOrdersServer
 			{
 				_socketClient.UnsubscribeAllAsync();
 				if(setNull) _socketClient = null;
+
+				OnProgress?.Invoke(new Message(2, _user, Exch.Bina, "Dispose", "socket Disposed"));
 			}
 		}
 	}

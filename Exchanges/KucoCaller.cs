@@ -7,7 +7,7 @@ namespace CaOrdersServer
 {
     public class KucoCaller : IApiCaller
     {
-        public event Action<string>? OnProgress;
+        public event Action<Message>? OnProgress;
         
         User _user;
         ApiKey _apiKey;
@@ -16,7 +16,7 @@ namespace CaOrdersServer
         public KucoCaller(User usr)
         {
             _user = usr;
-            _apiKey = _user.ApiKeys.Find(k => k.Exchange == "Kuco") ?? new();
+            _apiKey = _user.ApiKeys.Find(k => k.Exchange == Exch.Kuco) ?? new();
         }
         public bool CheckApiKey()
         {
@@ -33,7 +33,9 @@ namespace CaOrdersServer
                 }
                 catch (Exception ex)
                 {
-                    OnProgress?.Invoke($"CheckApiKey({_apiKey.Exchange}/{_user.Name}) Error: {ex.Message}");
+                    OnProgress?.Invoke(new Message(1, _user, Exch.Kuco, 
+                        "CheckApiKey", $"Error: {ex.Message}"));
+                    
                     return false; 
                 }
                 // Если получен доступ к балансам, ключ считается рабочим
@@ -42,7 +44,9 @@ namespace CaOrdersServer
 
                 _apiKey.IsWorking = res;
             }
-            OnProgress?.Invoke($"CheckApiKey({_apiKey.Exchange}/{_user.Name}) Key.IsWorking: {_apiKey.IsWorking}");
+            OnProgress?.Invoke(new Message(1, _user, Exch.Kuco, 
+                "CheckApiKey", $"Key.IsWorking: {_apiKey.IsWorking}"));
+            
             return res;
         }
         List<KucoinAccount> GetBalances()
@@ -65,7 +69,8 @@ namespace CaOrdersServer
             }
             else
             {
-                OnProgress?.Invoke($"Kuco({_user.Name}) Error GetAccountsAsync: {res.Error?.Message}");
+                OnProgress?.Invoke(new Message(1, _user, Exch.Kuco, 
+                    "GetBalances", $"Error GetAccountsAsync: {res.Error?.Message}"));
             }
             return balances;
         }
@@ -84,10 +89,11 @@ namespace CaOrdersServer
         }
         public Orders GetOrders()
         {
-            Orders orders = new(_user);
+            Orders orders = new(_user); orders.OnProgress += OnProgress;
             if (_apiKey.IsWorking)
             {
-                OnProgress?.Invoke($"Kuco({_user.Name}): GetOrders started");
+                OnProgress?.Invoke(new Message(1, _user, Exch.Kuco,
+                    "GetOrders", $"Kuco({_user.Name}): GetOrders started"));
                 
                 // Получаем ордера по страницам с 1-ой
                 var rr = _restClient.SpotApi.Trading.GetRecentOrdersAsync().Result;
@@ -100,7 +106,8 @@ namespace CaOrdersServer
                             orders.Add(new Order(ord, _user.ID));
                         }
                     }
-                    OnProgress?.Invoke($"Kuco({_user.Name}): GetRecentOrders orders.Count = {orders.Count}");
+                    OnProgress?.Invoke(new Message(1, _user, Exch.Kuco, 
+                        "GetOrders", $"GetRecentOrders Count={orders.Count}"));
                 }
                 var r = _restClient.SpotApi.Trading.GetOrdersAsync().Result;
                 if (r.Success)
@@ -122,15 +129,20 @@ namespace CaOrdersServer
                         r = _restClient.SpotApi.Trading.GetOrdersAsync(currentPage: ++currPage).Result;
                         if (!r.Success)
                         {
-                            OnProgress?.Invoke($"Kuco({_user.Name}): GetOrders(page:{currPage}) error \r\n[{r.Error?.Message}]");
+                            OnProgress?.Invoke(new Message(1, _user, Exch.Kuco, "GetOrders",
+                                $"GetOrders(page:{currPage}) error \r\n[{r.Error?.Message}]"));
+
                             return orders;
                         }
                     }
-                    OnProgress?.Invoke($"Kuco({_user.Name}): GetOrders orders.Count = {orders.Count}|{totalOrders}");
+                    OnProgress?.Invoke(new Message(1, _user, Exch.Kuco, 
+                        "GetOrders", $"GetOrders orders.Count = {orders.Count}|{totalOrders}"));
                 }
                 else
-                    OnProgress?.Invoke($"Kuco({_user.Name}): GetOrders error \r\n[{r.Error?.Message}]");
-
+                {
+                    OnProgress?.Invoke(new Message(1, _user, Exch.Kuco, 
+                        "GetOrders", $"GetOrders error \r\n[{r.Error?.Message}]"));
+                }
             }
             return orders;
         }

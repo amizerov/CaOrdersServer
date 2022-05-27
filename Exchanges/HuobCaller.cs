@@ -8,7 +8,7 @@ namespace CaOrdersServer
 {
     public class HuobCaller : IApiCaller
     {
-        public event Action<string>? OnProgress;
+        public event Action<Message>? OnProgress;
 
         User _user;
         ApiKey _apiKey;
@@ -17,7 +17,7 @@ namespace CaOrdersServer
         public HuobCaller(User usr)
         {
             _user = usr;
-            _apiKey = _user.ApiKeys.Find(k => k.Exchange == "Huob") ?? new();
+            _apiKey = _user.ApiKeys.Find(k => k.Exchange == Exch.Huob) ?? new();
         }
         public bool CheckApiKey()
         {
@@ -34,7 +34,8 @@ namespace CaOrdersServer
                 }
                 catch (Exception ex)
                 {
-                    OnProgress?.Invoke($"CheckApiKey({_apiKey.Exchange}/{_user.Name}) Error: {ex.Message}");
+                    OnProgress?.Invoke(new Message(1, _user, Exch.Huob, "CheckApiKey", $" Error: {ex.Message}"));
+
                     return false;
                 }
                 // Если получен доступ к балансам, ключ считается рабочим
@@ -43,7 +44,8 @@ namespace CaOrdersServer
 
                 _apiKey.IsWorking = res;
             }
-            OnProgress?.Invoke($"CheckApiKey({_apiKey.Exchange}/{_user.Name}) Key.IsWorking: {_apiKey.IsWorking}");
+            OnProgress?.Invoke(new Message(1, _user, Exch.Huob, "CheckApiKey", $"Key.IsWorking: {_apiKey.IsWorking}"));
+
             return res;
         }
         List<HuobiBalance> GetBalances()
@@ -61,13 +63,15 @@ namespace CaOrdersServer
                     }
                     else
                     {
-                        OnProgress?.Invoke($"Huob({_user.Name}) Error GetBalancesAsync: {res.Error?.Message}");
+                        OnProgress?.Invoke(new Message(1, _user, Exch.Huob, "GetBalances", 
+                            $"Error GetBalancesAsync: {res.Error?.Message}"));
                     }
                 }
             }
             else
             {
-                OnProgress?.Invoke($"Huob({_user.Name}) Error GetAccountsAsync: {res.Error?.Message}");
+                OnProgress?.Invoke(new Message(1, _user, Exch.Huob, "GetBalances",
+                    $"Error GetAccountsAsync: {res.Error?.Message}"));
             }
             return balances;
         }
@@ -77,10 +81,10 @@ namespace CaOrdersServer
         }
         public Orders GetOrders()
         {
-            Orders orders = new(_user);
+            Orders orders = new(_user); orders.OnProgress += OnProgress;
             if (_apiKey.IsWorking)
             {
-                OnProgress?.Invoke($"Huob({_user.Name}): GetOrders started");
+                OnProgress?.Invoke(new Message(1, _user, Exch.Huob, "GetOrders", "GetOrders started"));
 
                 var ro = _restClient.SpotApi.Trading.GetOpenOrdersAsync().Result;
                 if (ro.Success)
@@ -98,7 +102,8 @@ namespace CaOrdersServer
                         orders.Add(new Order(o));
                     }
 ;                }
-                OnProgress?.Invoke($"Huob({_user.Name}): GetOrders orders.Count = {orders.Count}");
+                OnProgress?.Invoke(new Message(1, _user, Exch.Huob, "GetOrders",
+                    $"GetOrders orders.Count = {orders.Count}"));
             }
             return orders;
         }

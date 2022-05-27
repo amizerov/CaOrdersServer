@@ -35,12 +35,18 @@
             this.timer_15min = new System.Windows.Forms.Timer(this.components);
             this.btnKeys = new System.Windows.Forms.Button();
             this.xtraTabControl1 = new DevExpress.XtraTab.XtraTabControl();
-            this.tabLog = new DevExpress.XtraTab.XtraTabPage();
-            this.tabKeys = new DevExpress.XtraTab.XtraTabPage();
+            this.tabCaller = new DevExpress.XtraTab.XtraTabPage();
+            this.tabSocket = new DevExpress.XtraTab.XtraTabPage();
+            this.txtLog1 = new System.Windows.Forms.TextBox();
             this.tabOrders = new DevExpress.XtraTab.XtraTabPage();
+            this.txtLog2 = new System.Windows.Forms.TextBox();
+            this.btnKuco = new System.Windows.Forms.Button();
+            this.button1 = new System.Windows.Forms.Button();
             ((System.ComponentModel.ISupportInitialize)(this.xtraTabControl1)).BeginInit();
             this.xtraTabControl1.SuspendLayout();
-            this.tabLog.SuspendLayout();
+            this.tabCaller.SuspendLayout();
+            this.tabSocket.SuspendLayout();
+            this.tabOrders.SuspendLayout();
             this.SuspendLayout();
             // 
             // txtLog
@@ -98,35 +104,79 @@
             | System.Windows.Forms.AnchorStyles.Right)));
             this.xtraTabControl1.Location = new System.Drawing.Point(24, 12);
             this.xtraTabControl1.Name = "xtraTabControl1";
-            this.xtraTabControl1.SelectedTabPage = this.tabLog;
+            this.xtraTabControl1.SelectedTabPage = this.tabCaller;
             this.xtraTabControl1.Size = new System.Drawing.Size(684, 518);
             this.xtraTabControl1.TabIndex = 3;
             this.xtraTabControl1.TabPages.AddRange(new DevExpress.XtraTab.XtraTabPage[] {
-            this.tabLog,
-            this.tabKeys,
+            this.tabCaller,
+            this.tabSocket,
             this.tabOrders});
             // 
-            // tabLog
+            // tabCaller
             // 
-            this.tabLog.Controls.Add(this.txtLog);
-            this.tabLog.Name = "tabLog";
-            this.tabLog.Size = new System.Drawing.Size(682, 493);
-            this.tabLog.TabPageWidth = 100;
-            this.tabLog.Text = "Log";
+            this.tabCaller.Controls.Add(this.txtLog);
+            this.tabCaller.Name = "tabCaller";
+            this.tabCaller.Size = new System.Drawing.Size(682, 493);
+            this.tabCaller.TabPageWidth = 100;
+            this.tabCaller.Text = "Caller";
             // 
-            // tabKeys
+            // tabSocket
             // 
-            this.tabKeys.Name = "tabKeys";
-            this.tabKeys.Size = new System.Drawing.Size(771, 473);
-            this.tabKeys.TabPageWidth = 100;
-            this.tabKeys.Text = "Keys";
+            this.tabSocket.Controls.Add(this.txtLog1);
+            this.tabSocket.Name = "tabSocket";
+            this.tabSocket.Size = new System.Drawing.Size(682, 493);
+            this.tabSocket.TabPageWidth = 100;
+            this.tabSocket.Text = "Socket";
+            // 
+            // txtLog1
+            // 
+            this.txtLog1.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.txtLog1.Location = new System.Drawing.Point(0, 0);
+            this.txtLog1.Multiline = true;
+            this.txtLog1.Name = "txtLog1";
+            this.txtLog1.ScrollBars = System.Windows.Forms.ScrollBars.Vertical;
+            this.txtLog1.Size = new System.Drawing.Size(682, 493);
+            this.txtLog1.TabIndex = 1;
             // 
             // tabOrders
             // 
+            this.tabOrders.Controls.Add(this.txtLog2);
             this.tabOrders.Name = "tabOrders";
-            this.tabOrders.Size = new System.Drawing.Size(771, 473);
+            this.tabOrders.Size = new System.Drawing.Size(682, 493);
             this.tabOrders.TabPageWidth = 100;
             this.tabOrders.Text = "Orders";
+            // 
+            // txtLog2
+            // 
+            this.txtLog2.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.txtLog2.Location = new System.Drawing.Point(0, 0);
+            this.txtLog2.Multiline = true;
+            this.txtLog2.Name = "txtLog2";
+            this.txtLog2.ScrollBars = System.Windows.Forms.ScrollBars.Vertical;
+            this.txtLog2.Size = new System.Drawing.Size(682, 493);
+            this.txtLog2.TabIndex = 1;
+            // 
+            // btnKuco
+            // 
+            this.btnKuco.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
+            this.btnKuco.Location = new System.Drawing.Point(728, 318);
+            this.btnKuco.Name = "btnKuco";
+            this.btnKuco.Size = new System.Drawing.Size(117, 39);
+            this.btnKuco.TabIndex = 1;
+            this.btnKuco.Text = "Загрузить Куко(4)";
+            this.btnKuco.UseVisualStyleBackColor = true;
+            this.btnKuco.Click += new System.EventHandler(this.btnKuco_Click);
+            // 
+            // button1
+            // 
+            this.button1.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
+            this.button1.Location = new System.Drawing.Point(728, 363);
+            this.button1.Name = "button1";
+            this.button1.Size = new System.Drawing.Size(117, 39);
+            this.button1.TabIndex = 1;
+            this.button1.Text = "Загрузить Хуоб(4)";
+            this.button1.UseVisualStyleBackColor = true;
+            this.button1.Click += new System.EventHandler(this.btnKuco_Click);
             // 
             // FrmMain
             // 
@@ -136,14 +186,20 @@
             this.Controls.Add(this.xtraTabControl1);
             this.Controls.Add(this.btnKeys);
             this.Controls.Add(this.btnListen);
+            this.Controls.Add(this.button1);
+            this.Controls.Add(this.btnKuco);
             this.Controls.Add(this.btnOrder);
             this.Name = "FrmMain";
             this.Text = "Orders checker";
             this.Load += new System.EventHandler(this.FrmMain_Load);
             ((System.ComponentModel.ISupportInitialize)(this.xtraTabControl1)).EndInit();
             this.xtraTabControl1.ResumeLayout(false);
-            this.tabLog.ResumeLayout(false);
-            this.tabLog.PerformLayout();
+            this.tabCaller.ResumeLayout(false);
+            this.tabCaller.PerformLayout();
+            this.tabSocket.ResumeLayout(false);
+            this.tabSocket.PerformLayout();
+            this.tabOrders.ResumeLayout(false);
+            this.tabOrders.PerformLayout();
             this.ResumeLayout(false);
 
         }
@@ -156,8 +212,12 @@
         private System.Windows.Forms.Timer timer_15min;
         private Button btnKeys;
         private DevExpress.XtraTab.XtraTabControl xtraTabControl1;
-        private DevExpress.XtraTab.XtraTabPage tabLog;
-        private DevExpress.XtraTab.XtraTabPage tabKeys;
+        private DevExpress.XtraTab.XtraTabPage tabCaller;
+        private DevExpress.XtraTab.XtraTabPage tabSocket;
         private DevExpress.XtraTab.XtraTabPage tabOrders;
+        private Button btnKuco;
+        private Button button1;
+        private TextBox txtLog1;
+        private TextBox txtLog2;
     }
 }

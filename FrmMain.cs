@@ -8,6 +8,8 @@ namespace CaOrdersServer
        */
         // Все юзеры сразу создаются
         Users users = new();
+        User? SelectedUser;
+        Exchange? SelectedExch;
 
         public FrmMain()
         {
@@ -18,48 +20,92 @@ namespace CaOrdersServer
         {
             users.OnProgress += OnProgress;
 
+            LoadTreeList();
+
             /* Update all orders
              Один раз при запуске грузим все ордера со всех бирж по запросу
              далее, следим за изменением статусов через сокет */
-            btnOrder_Click(sender, e);
+            //btnOrder_Click(sender, e);
 
             /* Start listen orders
              после первичной загрузки ордеров включаем сокет */
-            btnListen_Click(sender, e);
+            //btnListen_Click(sender, e);
 
             /* Каждые 15 минут check api keys */
-            timer_15min.Start();  
+            //timer_15min.Start();  
         }
 
         private void btnKeys_Click(object sender, EventArgs e)
         {
-            foreach (User u in users)
+            if (SelectedExch != null)
             {
-                u.CheckApiKeys(Exch.Bina);
-                u.CheckApiKeys(Exch.Kuco);
-                u.CheckApiKeys(Exch.Huob);
+                // Выбрана конкретная Биржа конкретного Юзера
+                SelectedExch.CheckApiKeys();
+            }
+            else if (SelectedUser != null)
+            {
+                // Выбран только Юзер, обновим все биржи для него
+                foreach (Exchange ex in SelectedUser.Exchanges)
+                    ex.CheckApiKeys();
+            }
+            else
+            {
+                // Обновляем ордера всех Юзеров по всем Биржам
+                foreach (User u in users)
+                    foreach (Exchange ex in u.Exchanges)
+                        ex.CheckApiKeys();
             }
         }
         private void btnOrder_Click(object sender, EventArgs e)
         {
             txtLog.Text = "";
 
-            foreach (User u in users)
+            if (SelectedExch != null)
             {
-                u.UpdateOrders(Exch.Bina);
-                u.UpdateOrders(Exch.Kuco);
-                u.UpdateOrders(Exch.Huob);
+                // Выбрана конкретная Биржа конкретного Юзера
+                SelectedExch.UpdateOrders();
+            }
+            else if (SelectedUser != null)
+            {
+                // Выбран только Юзер, обновим все биржи для него
+                foreach (Exchange ex in SelectedUser.Exchanges)
+                    ex.UpdateOrders();
+            }
+            else
+            {
+                // Обновляем ордера всех Юзеров по всем Биржам
+                foreach (User u in users)
+                    foreach (Exchange ex in u.Exchanges)
+                        ex.UpdateOrders();
             }
         }
 
         private void btnListen_Click(object sender, EventArgs e)
         {
-            foreach (User u in users)
+            if (SelectedExch != null)
             {
-                u.StartListenOrders(Exch.Bina);
-                u.StartListenOrders(Exch.Kuco);
-                u.StartListenOrders(Exch.Huob);
+                // Выбрана конкретная Биржа конкретного Юзера
+                SelectedExch.InitOrdersListener();
             }
+            else if (SelectedUser != null)
+            {
+                // Выбран только Юзер, обновим все биржи для него
+                foreach (Exchange ex in SelectedUser.Exchanges)
+                    ex.InitOrdersListener();
+            }
+            else
+            {
+                // Обновляем ордера всех Юзеров по всем Биржам
+                foreach (User u in users)
+                    foreach (Exchange ex in u.Exchanges)
+                        ex.InitOrdersListener();
+            }
+        }
+
+        private void btnTimer_Click(object sender, EventArgs e)
+        {
+            /* Каждые 15 минут check api keys */
+            timer_15min.Start();
         }
 
         private void timer_15min_Tick(object sender, EventArgs e)
@@ -67,30 +113,60 @@ namespace CaOrdersServer
             btnKeys_Click(sender, e);
         }
 
-        private void btnKuco_Click(object sender, EventArgs e)
+        private void treeList_FocusedNodeChanged(object sender, DevExpress.XtraTreeList.FocusedNodeChangedEventArgs e)
         {
-            users.Find(u => u.ID == 4)!.UpdateOrders(Exch.Kuco);
+            int uid = (int)e.Node[1];
+            int eid = (int)e.Node[2];
+            if (uid == 0 && e.Node.ParentNode != null)
+                uid = (int)e.Node.ParentNode[1];
+
+            SelectedExch = null;
+            SelectedUser = users.Find(u => u.ID == uid);
+            if(SelectedUser != null)
+                SelectedExch = SelectedUser.Exchanges.Find(e => e.ID == eid);
+        }
+
+        void LoadTreeList()
+        {
+            List<TreeNode> tree = new();
+            tree.Add(new TreeNode { id = 0, pid = 0, Name = "Все" });
+            foreach (var u in users)
+            {
+                tree.Add(new TreeNode { id = u.ID, pid = u.ID, Name = u.Name, user_id = u.ID });
+                foreach (var e in u.Exchanges)
+                {
+                    tree.Add(new TreeNode { id = u.ID * 10 + e.ID, pid = u.ID, Name = e.Name, exch_id = e.ID });
+                }
+            }
+            treeList.DataSource = tree;
+            treeList.KeyFieldName = "id";
+            treeList.ParentFieldName = "pid";
+            treeList.Columns[0].Caption = "Users";
+            treeList.OptionsBehavior.Editable = false;
+            treeList.RowHeight = 20;
+            treeList.ExpandAll();
         }
 
         void OnProgress(Message msg)
         {
-            string m = "[" + DateTime.Now.ToString("hh:mm:ss") + "] " + msg.msg + "\r\n";
+            string m = 
+                $"[{DateTime.Now.ToString("hh:mm:ss")}] {msg.exch}({msg.user.Name}) {msg.msg}\r\n";
             
             Invoke(new Action(() =>
             {
                 switch(msg.type)
                 {
                     case 1:
-                        txtLog.Text = msg + txtLog.Text;
+                        txtLog.Text = m + txtLog.Text;
                         break;
                     case 2:
-                        txtLog1.Text = msg + txtLog1.Text;
+                        txtLog1.Text = m + txtLog1.Text;
                         break;
                     case 3:
-                        txtLog2.Text = msg + txtLog2.Text;
+                        txtLog2.Text = m + txtLog2.Text;
                         break;
                 }
             }));
-        } 
+        }
     }
 }

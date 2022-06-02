@@ -42,11 +42,22 @@
             this.txtLog2 = new System.Windows.Forms.TextBox();
             this.btnKuco = new System.Windows.Forms.Button();
             this.button1 = new System.Windows.Forms.Button();
+            this.splitContainer1 = new System.Windows.Forms.SplitContainer();
+            this.treeList = new DevExpress.XtraTreeList.TreeList();
+            this.statusStrip1 = new System.Windows.Forms.StatusStrip();
+            this.toolStripStatusLabel1 = new System.Windows.Forms.ToolStripStatusLabel();
+            this.btnTimer = new System.Windows.Forms.Button();
             ((System.ComponentModel.ISupportInitialize)(this.xtraTabControl1)).BeginInit();
             this.xtraTabControl1.SuspendLayout();
             this.tabCaller.SuspendLayout();
             this.tabSocket.SuspendLayout();
             this.tabOrders.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.splitContainer1)).BeginInit();
+            this.splitContainer1.Panel1.SuspendLayout();
+            this.splitContainer1.Panel2.SuspendLayout();
+            this.splitContainer1.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.treeList)).BeginInit();
+            this.statusStrip1.SuspendLayout();
             this.SuspendLayout();
             // 
             // txtLog
@@ -56,13 +67,13 @@
             this.txtLog.Multiline = true;
             this.txtLog.Name = "txtLog";
             this.txtLog.ScrollBars = System.Windows.Forms.ScrollBars.Vertical;
-            this.txtLog.Size = new System.Drawing.Size(682, 493);
+            this.txtLog.Size = new System.Drawing.Size(568, 553);
             this.txtLog.TabIndex = 0;
             // 
             // btnOrder
             // 
             this.btnOrder.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
-            this.btnOrder.Location = new System.Drawing.Point(728, 99);
+            this.btnOrder.Location = new System.Drawing.Point(892, 96);
             this.btnOrder.Name = "btnOrder";
             this.btnOrder.Size = new System.Drawing.Size(117, 39);
             this.btnOrder.TabIndex = 1;
@@ -73,7 +84,7 @@
             // btnListen
             // 
             this.btnListen.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
-            this.btnListen.Location = new System.Drawing.Point(728, 161);
+            this.btnListen.Location = new System.Drawing.Point(892, 156);
             this.btnListen.Name = "btnListen";
             this.btnListen.Size = new System.Drawing.Size(117, 39);
             this.btnListen.TabIndex = 1;
@@ -89,7 +100,7 @@
             // btnKeys
             // 
             this.btnKeys.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
-            this.btnKeys.Location = new System.Drawing.Point(728, 36);
+            this.btnKeys.Location = new System.Drawing.Point(892, 36);
             this.btnKeys.Name = "btnKeys";
             this.btnKeys.Size = new System.Drawing.Size(117, 39);
             this.btnKeys.TabIndex = 2;
@@ -99,13 +110,11 @@
             // 
             // xtraTabControl1
             // 
-            this.xtraTabControl1.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
-            | System.Windows.Forms.AnchorStyles.Left) 
-            | System.Windows.Forms.AnchorStyles.Right)));
-            this.xtraTabControl1.Location = new System.Drawing.Point(24, 12);
+            this.xtraTabControl1.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.xtraTabControl1.Location = new System.Drawing.Point(0, 0);
             this.xtraTabControl1.Name = "xtraTabControl1";
             this.xtraTabControl1.SelectedTabPage = this.tabCaller;
-            this.xtraTabControl1.Size = new System.Drawing.Size(684, 518);
+            this.xtraTabControl1.Size = new System.Drawing.Size(570, 578);
             this.xtraTabControl1.TabIndex = 3;
             this.xtraTabControl1.TabPages.AddRange(new DevExpress.XtraTab.XtraTabPage[] {
             this.tabCaller,
@@ -116,7 +125,7 @@
             // 
             this.tabCaller.Controls.Add(this.txtLog);
             this.tabCaller.Name = "tabCaller";
-            this.tabCaller.Size = new System.Drawing.Size(682, 493);
+            this.tabCaller.Size = new System.Drawing.Size(568, 553);
             this.tabCaller.TabPageWidth = 100;
             this.tabCaller.Text = "Caller";
             // 
@@ -124,7 +133,7 @@
             // 
             this.tabSocket.Controls.Add(this.txtLog1);
             this.tabSocket.Name = "tabSocket";
-            this.tabSocket.Size = new System.Drawing.Size(682, 493);
+            this.tabSocket.Size = new System.Drawing.Size(568, 553);
             this.tabSocket.TabPageWidth = 100;
             this.tabSocket.Text = "Socket";
             // 
@@ -135,14 +144,14 @@
             this.txtLog1.Multiline = true;
             this.txtLog1.Name = "txtLog1";
             this.txtLog1.ScrollBars = System.Windows.Forms.ScrollBars.Vertical;
-            this.txtLog1.Size = new System.Drawing.Size(682, 493);
+            this.txtLog1.Size = new System.Drawing.Size(568, 553);
             this.txtLog1.TabIndex = 1;
             // 
             // tabOrders
             // 
             this.tabOrders.Controls.Add(this.txtLog2);
             this.tabOrders.Name = "tabOrders";
-            this.tabOrders.Size = new System.Drawing.Size(682, 493);
+            this.tabOrders.Size = new System.Drawing.Size(568, 553);
             this.tabOrders.TabPageWidth = 100;
             this.tabOrders.Text = "Orders";
             // 
@@ -153,38 +162,96 @@
             this.txtLog2.Multiline = true;
             this.txtLog2.Name = "txtLog2";
             this.txtLog2.ScrollBars = System.Windows.Forms.ScrollBars.Vertical;
-            this.txtLog2.Size = new System.Drawing.Size(682, 493);
+            this.txtLog2.Size = new System.Drawing.Size(568, 553);
             this.txtLog2.TabIndex = 1;
             // 
             // btnKuco
             // 
             this.btnKuco.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
-            this.btnKuco.Location = new System.Drawing.Point(728, 318);
+            this.btnKuco.Location = new System.Drawing.Point(892, 318);
             this.btnKuco.Name = "btnKuco";
             this.btnKuco.Size = new System.Drawing.Size(117, 39);
             this.btnKuco.TabIndex = 1;
             this.btnKuco.Text = "Загрузить Куко(4)";
             this.btnKuco.UseVisualStyleBackColor = true;
-            this.btnKuco.Click += new System.EventHandler(this.btnKuco_Click);
             // 
             // button1
             // 
             this.button1.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
-            this.button1.Location = new System.Drawing.Point(728, 363);
+            this.button1.Location = new System.Drawing.Point(892, 363);
             this.button1.Name = "button1";
             this.button1.Size = new System.Drawing.Size(117, 39);
             this.button1.TabIndex = 1;
             this.button1.Text = "Загрузить Хуоб(4)";
             this.button1.UseVisualStyleBackColor = true;
-            this.button1.Click += new System.EventHandler(this.btnKuco_Click);
+            // 
+            // splitContainer1
+            // 
+            this.splitContainer1.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
+            | System.Windows.Forms.AnchorStyles.Left) 
+            | System.Windows.Forms.AnchorStyles.Right)));
+            this.splitContainer1.Location = new System.Drawing.Point(12, 12);
+            this.splitContainer1.Name = "splitContainer1";
+            // 
+            // splitContainer1.Panel1
+            // 
+            this.splitContainer1.Panel1.Controls.Add(this.treeList);
+            // 
+            // splitContainer1.Panel2
+            // 
+            this.splitContainer1.Panel2.Controls.Add(this.xtraTabControl1);
+            this.splitContainer1.Size = new System.Drawing.Size(859, 578);
+            this.splitContainer1.SplitterDistance = 285;
+            this.splitContainer1.TabIndex = 4;
+            // 
+            // treeList
+            // 
+            this.treeList.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.treeList.Location = new System.Drawing.Point(0, 0);
+            this.treeList.Name = "treeList";
+            this.treeList.BeginUnboundLoad();
+            this.treeList.AppendNode(new object[0], -1);
+            this.treeList.EndUnboundLoad();
+            this.treeList.Size = new System.Drawing.Size(285, 578);
+            this.treeList.TabIndex = 0;
+            this.treeList.FocusedNodeChanged += new DevExpress.XtraTreeList.FocusedNodeChangedEventHandler(this.treeList_FocusedNodeChanged);
+            // 
+            // statusStrip1
+            // 
+            this.statusStrip1.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
+            this.toolStripStatusLabel1});
+            this.statusStrip1.Location = new System.Drawing.Point(0, 604);
+            this.statusStrip1.Name = "statusStrip1";
+            this.statusStrip1.Size = new System.Drawing.Size(1028, 22);
+            this.statusStrip1.TabIndex = 5;
+            this.statusStrip1.Text = "statusStrip1";
+            // 
+            // toolStripStatusLabel1
+            // 
+            this.toolStripStatusLabel1.Name = "toolStripStatusLabel1";
+            this.toolStripStatusLabel1.Size = new System.Drawing.Size(52, 17);
+            this.toolStripStatusLabel1.Text = "Progress";
+            // 
+            // btnTimer
+            // 
+            this.btnTimer.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
+            this.btnTimer.Location = new System.Drawing.Point(892, 216);
+            this.btnTimer.Name = "btnTimer";
+            this.btnTimer.Size = new System.Drawing.Size(117, 39);
+            this.btnTimer.TabIndex = 1;
+            this.btnTimer.Text = "Запустить таймер 15 минут";
+            this.btnTimer.UseVisualStyleBackColor = true;
+            this.btnTimer.Click += new System.EventHandler(this.btnTimer_Click);
             // 
             // FrmMain
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(864, 561);
-            this.Controls.Add(this.xtraTabControl1);
+            this.ClientSize = new System.Drawing.Size(1028, 626);
+            this.Controls.Add(this.statusStrip1);
+            this.Controls.Add(this.splitContainer1);
             this.Controls.Add(this.btnKeys);
+            this.Controls.Add(this.btnTimer);
             this.Controls.Add(this.btnListen);
             this.Controls.Add(this.button1);
             this.Controls.Add(this.btnKuco);
@@ -200,7 +267,15 @@
             this.tabSocket.PerformLayout();
             this.tabOrders.ResumeLayout(false);
             this.tabOrders.PerformLayout();
+            this.splitContainer1.Panel1.ResumeLayout(false);
+            this.splitContainer1.Panel2.ResumeLayout(false);
+            ((System.ComponentModel.ISupportInitialize)(this.splitContainer1)).EndInit();
+            this.splitContainer1.ResumeLayout(false);
+            ((System.ComponentModel.ISupportInitialize)(this.treeList)).EndInit();
+            this.statusStrip1.ResumeLayout(false);
+            this.statusStrip1.PerformLayout();
             this.ResumeLayout(false);
+            this.PerformLayout();
 
         }
 
@@ -219,5 +294,10 @@
         private Button button1;
         private TextBox txtLog1;
         private TextBox txtLog2;
+        private SplitContainer splitContainer1;
+        private DevExpress.XtraTreeList.TreeList treeList;
+        private StatusStrip statusStrip1;
+        private ToolStripStatusLabel toolStripStatusLabel1;
+        private Button btnTimer;
     }
 }

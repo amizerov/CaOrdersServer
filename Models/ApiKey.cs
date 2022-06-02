@@ -6,6 +6,7 @@ namespace CaOrdersServer
     public class ApiKey
     {
         public int ID = 0;
+        public User User;
         public Exch Exchange;
         public string Key = "1";
         public string Secret = "1";
@@ -32,21 +33,14 @@ namespace CaOrdersServer
                 G.db_exec(sql);
             }
         }
-        public DateTime CheckedAt
-        {
-            get
-            {
-                return G._D(G.db_select($"select CheckedAt from UserKeys where ID={ID}"));
-            }
-        }
-        public ApiKey() { }
-        public ApiKey(DataRow k)
+        public ApiKey(DataRow k, User user)
         {
             ID = G._I(k["ID"]);
             Key = G._S(k["ApiKey"]);
             Secret = G._S(k["ApiSecret"]);
             Exchange = (Exch)G._I(k["ExchangeId"]);
             PassPhrase = G._S(k["ApiPassPhrase"]);
+            User = user;
         }
     }
 

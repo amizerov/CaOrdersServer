@@ -12,7 +12,6 @@ namespace CaOrdersServer
         public string Name;
         public string Email;
         public List<ApiKey> ApiKeys = new();
-
         public List<Exchange> Exchanges = new();
 
         public User(DataRow r)
@@ -26,23 +25,14 @@ namespace CaOrdersServer
 
             foreach (DataRow k in dt.Rows)
             {
-                ApiKey key = new ApiKey(k);
+                ApiKey key = new ApiKey(k, this);
                 ApiKeys.Add(key);
 
-                Exchange exc = new Exchange(key, this);
-                if (exc.CheckApiKeys())
-                {
-                    Exchanges.Add(exc);
-                    exc.OnProgress += Progress;
-                }
+                Exchange exc = new Exchange(key);
+                Exchanges.Add(exc);
+                exc.OnProgress += Progress;
             }
-
-            OnProgress?.Invoke(new Message(4, this, Exch.none, "User", $"User created"));
         }
-
-        /******************************************************* 
-         * One time call functions ->
-         *******************************************************/
         public bool CheckApiKeys(Exch exc) 
         {
             Exchange? exch = Exchanges.Find(e => e.ID == (int)exc);
@@ -51,7 +41,7 @@ namespace CaOrdersServer
             else
                 return exch.CheckApiKeys();
         }
-         /* Проверка ордеров на Бинансе, Кукоине и Хуоби, 
+         /* Начальная загрузка ордеров на всех биржах, 
          * вызывается только один раз при запуске программы,
          * ордера сохраняются или обновляются в БД, 
          * потом их статусы обновляются через сокет.
@@ -69,15 +59,6 @@ namespace CaOrdersServer
                 });
         }
         // <--------------------------
-
-        public bool StartListenOrders(Exch exc)
-        {
-            Exchange? exch = Exchanges.Find(e => e.ID == (int)exc);
-            if (exch == null)
-                return false;
-            else
-                return exch.InitOrdersListener();
-        }
     }
 
     public class Users : List<User>

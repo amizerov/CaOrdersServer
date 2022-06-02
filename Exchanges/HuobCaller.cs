@@ -11,18 +11,18 @@ namespace CaOrdersServer
         public event Action<Message>? OnProgress;
 
         User _user;
-        ApiKey _apiKey;
+        ApiKey? _apiKey;
         HuobiClient _restClient = new();
 
         public HuobCaller(User usr)
         {
             _user = usr;
-            _apiKey = _user.ApiKeys.Find(k => k.Exchange == Exch.Huob) ?? new();
+            _apiKey = _user.ApiKeys.Find(k => k.Exchange == Exch.Huob);
         }
         public bool CheckApiKey()
         {
             bool res = false;
-            if (_apiKey.ID > 0)
+            if (_apiKey != null && _apiKey.ID > 0)
             {
                 try 
                 { 
@@ -43,8 +43,9 @@ namespace CaOrdersServer
                 res = bs.Count > 0;
 
                 _apiKey.IsWorking = res;
+
+                OnProgress?.Invoke(new Message(1, _user, Exch.Huob, "CheckApiKey", $"Key.IsWorking: {_apiKey.IsWorking}"));
             }
-            OnProgress?.Invoke(new Message(1, _user, Exch.Huob, "CheckApiKey", $"Key.IsWorking: {_apiKey.IsWorking}"));
 
             return res;
         }
@@ -82,7 +83,7 @@ namespace CaOrdersServer
         public Orders GetOrders()
         {
             Orders orders = new(_user); orders.OnProgress += OnProgress;
-            if (_apiKey.IsWorking)
+            if (_apiKey != null && _apiKey.IsWorking)
             {
                 OnProgress?.Invoke(new Message(1, _user, Exch.Huob, "GetOrders", "GetOrders started"));
 

@@ -180,7 +180,11 @@ namespace CaOrdersServer
                 if (o != null)
                 {
                     if (o.state != state) msg = "state"; o.state = state;
-                    if (o.dt_exec != dt_exec) msg = "dt_exec"; o.dt_exec = dt_exec;
+                    if (o.dt_exec is null && state == OState.Filled)
+                    {
+                        msg += "|dt_exec";
+                        o.dt_exec = dt_exec;
+                    }
 
                     // эти поля ордера измениться не могут
                     o.spotmar = spotmar; // но могли быть ранее заданы в базе не верно
@@ -189,11 +193,12 @@ namespace CaOrdersServer
                     {
                         int stt = (int)o.state;
                         G.db_exec($"insert OrderStateHistory(oid, state, src) values({o.id}, {stt}, '{src}')");
+                        OnProgress?.Invoke(new Message(3, this.User!, (Exch)exchange, "Order.Update", msg));
                     }
                     if (msg.Length > 0)
                     {
                         o.dtu = DateTime.Now;
-                        msg = $"{exchange}({usr_id}): Order({symbol}|{buysel}|{price}) {msg} updated";
+                        msg = $"Order({symbol}|{buysel}|{price}) {msg} updated";
                     }
                 }
                 else
@@ -201,7 +206,7 @@ namespace CaOrdersServer
                     db.Orders!.Add(this);
                     newOrUpdated = false;
 
-                    msg = $"{Exchange.GetName(exchange)}({usr_id}): New Order({symbol}|{buysel}|{price}) found";
+                    msg = $"New Order({symbol}|{buysel}|{price}) found";
                 }
                 if (msg.Length > 0)
                 {
@@ -212,7 +217,7 @@ namespace CaOrdersServer
                     }
                     catch (Exception ex)
                     {
-                        msg = msg + "\r\n" + "Error: " + ex.Message;
+                        msg = msg + "\r\n" + "Error: " + ex.Message + "\r\n" + ex.InnerException;
                         OnProgress?.Invoke(new Message(3, this.User!, (Exch)exchange, "Order.Update", msg));
                     }
                 }
@@ -270,7 +275,7 @@ namespace CaOrdersServer
             base.Add(o);
 
             o.OnProgress += Progress;
-            o.Update($"Caller({o.exchange})");
+            o.Update($"{(Exch)o.exchange}Caller");
         }
 
     }

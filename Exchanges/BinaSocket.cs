@@ -12,7 +12,7 @@ namespace CaOrdersServer
 		public event Action<Message>? OnProgress;
 
 		User _user;
-		ApiKey _apiKey;
+		ApiKey? _apiKey;
 
 		BinanceSocketClient? _socketClient;
 		UpdateSubscription? _socketSubscrSpot;
@@ -26,9 +26,9 @@ namespace CaOrdersServer
 		public BinaSocket(User usr)
 		{
 			_user = usr;
-			_apiKey = _user.ApiKeys.Find(k => k.Exchange == Exch.Bina) ?? new();
+			_apiKey = _user.ApiKeys.Find(k => k.Exchange == Exch.Bina);
 
-			if (_apiKey.IsWorking)
+			if (_apiKey != null && _apiKey.IsWorking)
 			{
 				_socketClient = new BinanceSocketClient(
 					new BinanceSocketClientOptions()
@@ -44,7 +44,7 @@ namespace CaOrdersServer
 			_restClient = new BinanceClient(
 				new BinanceClientOptions()
 				{
-					ApiCredentials = new ApiCredentials(_apiKey.Key, _apiKey.Secret)
+					ApiCredentials = new ApiCredentials(_apiKey!.Key, _apiKey.Secret)
 				});
 			var res = spotMarg ? _restClient.SpotApi.Account.StartUserStreamAsync().Result
 							   : _restClient.SpotApi.Account.StartMarginUserStreamAsync().Result;
@@ -73,36 +73,41 @@ namespace CaOrdersServer
 		}
 		private bool SubscribeToOrdersUpdates(int minutesToReconnect = 20, bool spotMarg = true) 
 		{
-			if (CreateListenKey(spotMarg))
+			if (_apiKey != null && _apiKey.IsWorking)
 			{
-				var lik = spotMarg ? _listenKeySpot : _listenKeyMarg; 
-				var res = _socketClient!.SpotStreams.SubscribeToUserDataUpdatesAsync(
-					lik,
-					onOrderUpdateMessage => OnOrderUpdate(onOrderUpdateMessage.Data, spotMarg),
-					null,
-					onAccountPositionMessage => OnAccountUpdate(onAccountPositionMessage.Data),
-					null
-				).Result;
-				if (res.Success)
+				if (CreateListenKey(spotMarg))
 				{
-					if (spotMarg)
-						_socketSubscrSpot = res.Data;
+					var lik = spotMarg ? _listenKeySpot : _listenKeyMarg;
+					var res = _socketClient!.SpotStreams.SubscribeToUserDataUpdatesAsync(
+						lik,
+						onOrderUpdateMessage => OnOrderUpdate(onOrderUpdateMessage.Data, spotMarg),
+						null,
+						onAccountPositionMessage => OnAccountUpdate(onAccountPositionMessage.Data),
+						null
+					).Result;
+					if (res.Success)
+					{
+						if (spotMarg)
+							_socketSubscrSpot = res.Data;
+						else
+							_socketSubscrMarg = res.Data;
+
+						OnProgress?.Invoke(new Message(2, _user, Exch.Bina, "SubscribeToOrdersUpdates",
+							$"{(spotMarg ? "Spot" : "Marg")} socket init ok"));
+
+						Task.Run(() => KeepAlive(minutesToReconnect));
+					}
 					else
-						_socketSubscrMarg = res.Data;
+					{
+						OnProgress?.Invoke(new Message(2, _user, Exch.Bina, "SubscribeToOrdersUpdates",
+							$"Error in SubscribeToUserDataUpdatesAsync: {res.Error?.Message}"));
 
-					OnProgress?.Invoke(new Message(2, _user, Exch.Bina, "SubscribeToOrdersUpdates",
-						$"{(spotMarg ? "Spot" : "Marg")} socket init ok"));
-
-					Task.Run(() => KeepAlive(minutesToReconnect));
+						return false;
+					}
+					return true;
 				}
 				else
-				{
-					OnProgress?.Invoke(new Message(2, _user, Exch.Bina, "SubscribeToOrdersUpdates", 
-						$"Error in SubscribeToUserDataUpdatesAsync: {res.Error?.Message}"));
-					
 					return false;
-				}
-				return true;
 			}
 			else
 				return false;

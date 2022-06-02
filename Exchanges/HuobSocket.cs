@@ -12,7 +12,7 @@ namespace CaOrdersServer
 		public event Action<Message>? OnProgress;
 
 		User _user;
-		ApiKey _apiKey;
+		ApiKey? _apiKey;
 
 		HuobiSocketClient? _socketClient;
 		UpdateSubscription? _socketSubscr;
@@ -20,9 +20,9 @@ namespace CaOrdersServer
 		public HuobSocket(User usr)
 		{
 			_user = usr;
-			_apiKey = _user.ApiKeys.Find(k => k.Exchange == Exch.Kuco) ?? new();
+			_apiKey = _user.ApiKeys.Find(k => k.Exchange == Exch.Kuco);
 
-			if (_apiKey.IsWorking)
+			if (_apiKey != null && _apiKey.IsWorking)
 			{
 				_socketClient = new HuobiSocketClient(
 					new HuobiSocketClientOptions()
@@ -77,7 +77,7 @@ namespace CaOrdersServer
 			Thread.Sleep(minutesToReconnect * 60 * 1000);
 			_socketSubscr?.ReconnectAsync();
 
-			OnProgress?.Invoke(new Message(2, _user, Exch.Huob, "KeepAlive", $"Huob({_user.Name}) socket reconnected"));
+			OnProgress?.Invoke(new Message(2, _user, Exch.Huob, "KeepAlive", "socket reconnected"));
 			KeepAlive(minutesToReconnect);
 		}
 		public void Dispose(bool setNull = true)
@@ -87,7 +87,7 @@ namespace CaOrdersServer
 				_socketClient.UnsubscribeAllAsync();
 				if (setNull) _socketClient = null;
 
-				OnProgress?.Invoke(new Message(2, _user, Exch.Huob, "Dispose", $"Huob({_user.Name}) socket disposed"));
+				OnProgress?.Invoke(new Message(2, _user, Exch.Huob, "Dispose", "socket disposed"));
 			}
 		}
 	}

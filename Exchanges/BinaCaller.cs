@@ -12,18 +12,18 @@ namespace CaOrdersServer
         public event Action<Message>? OnProgress;
 
         protected User _user;
-        protected ApiKey _apiKey;
+        protected ApiKey? _apiKey;
 
         BinanceClient _restClient = new();
 
         public BinaCaller(User usr) { 
             _user = usr;
-            _apiKey = _user.ApiKeys.Find(k => k.Exchange == Exch.Bina) ?? new();
+            _apiKey = _user.ApiKeys.Find(k => k.Exchange == Exch.Bina);
         }
         public bool CheckApiKey()
         {
             bool res = false;
-            if (_apiKey.ID > 0)
+            if (_apiKey != null)
             {
                 try
                 {
@@ -44,8 +44,9 @@ namespace CaOrdersServer
                 res = bs.Count > 0;
 
                 _apiKey.IsWorking = res;
+            
+                OnProgress?.Invoke(new Message(1, _user, Exch.Bina, "CheckApiKey", $"Key.IsWorking: {_apiKey.IsWorking}"));
             }
-            OnProgress?.Invoke(new Message(1, _user, Exch.Bina, "CheckApiKey", $"Key.IsWorking: {_apiKey.IsWorking}"));
 
             return res;
         }
@@ -71,7 +72,7 @@ namespace CaOrdersServer
         public Orders GetOrders()
         {
             Orders orders = new(_user); orders.OnProgress += OnProgress;
-            if (_apiKey.IsWorking)
+            if (_apiKey != null && _apiKey.IsWorking)
             {
                 OnProgress?.Invoke(new Message(1, _user, Exch.Bina, "GetOrders", "GetOrders started"));
 

@@ -36,24 +36,22 @@ namespace CaOrdersServer
         Huob = 3,
         none = 4
     }
-public class Exchange
+    public class Exchange
     {
-        public static string GetName(int n) { 
-            return n == (int)Exch.Bina ? "Bina" : n == (int)Exch.Kuco ? "Kuco" : n == (int)Exch.Huob ? "Huob" : "Error"; 
-        }
-
         public event Action<Message>? OnProgress;
         void Progress(Message msg) => OnProgress?.Invoke(msg);
 
+        User usr;
         ApiKey _apiKey;
         IApiCaller _caller;
         IApiSocket _socket;
 
         public int ID { get { return (int)_apiKey.Exchange; } }
         public string Name { get { return _apiKey.Exchange.ToString(); } }
-        public Exchange(ApiKey key, User usr)
+        public Exchange(ApiKey key)
         {
             _apiKey = key;
+            usr = key.User;
 
             if (_apiKey.Exchange == Exch.Bina)
             {

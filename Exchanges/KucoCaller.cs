@@ -10,18 +10,18 @@ namespace CaOrdersServer
         public event Action<Message>? OnProgress;
         
         User _user;
-        ApiKey _apiKey;
+        ApiKey? _apiKey;
         KucoinClient _restClient = new();
 
         public KucoCaller(User usr)
         {
             _user = usr;
-            _apiKey = _user.ApiKeys.Find(k => k.Exchange == Exch.Kuco) ?? new();
+            _apiKey = _user.ApiKeys.Find(k => k.Exchange == Exch.Kuco);
         }
         public bool CheckApiKey()
         {
             bool res = false;
-            if (_apiKey.ID > 0)
+            if (_apiKey != null)
             {
                 try
                 {
@@ -43,9 +43,9 @@ namespace CaOrdersServer
                 res = bs.Count > 0;
 
                 _apiKey.IsWorking = res;
+
+                OnProgress?.Invoke(new Message(1, _user, Exch.Kuco, "CheckApiKey", $"Key.IsWorking: {_apiKey.IsWorking}"));
             }
-            OnProgress?.Invoke(new Message(1, _user, Exch.Kuco, 
-                "CheckApiKey", $"Key.IsWorking: {_apiKey.IsWorking}"));
             
             return res;
         }
@@ -77,7 +77,7 @@ namespace CaOrdersServer
         public Order GetOrder(string oid)
         {
             KucoinOrder order = new KucoinOrder();
-            if (_apiKey.IsWorking)
+            if (_apiKey != null && _apiKey.IsWorking)
             {
                 var res = _restClient.SpotApi.Trading.GetOrderAsync(oid).Result;
                 if (res.Success)
@@ -90,7 +90,7 @@ namespace CaOrdersServer
         public Orders GetOrders()
         {
             Orders orders = new(_user); orders.OnProgress += OnProgress;
-            if (_apiKey.IsWorking)
+            if (_apiKey != null && _apiKey.IsWorking)
             {
                 OnProgress?.Invoke(new Message(1, _user, Exch.Kuco,
                     "GetOrders", $"Kuco({_user.Name}): GetOrders started"));

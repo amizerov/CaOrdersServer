@@ -12,7 +12,7 @@ namespace CaOrdersServer
 		public event Action<Message>? OnProgress;
 
 		User _user;
-		ApiKey _apiKey;
+		ApiKey? _apiKey;
 
 		KucoinSocketClient? _socketClient;
 		UpdateSubscription? _socketSubscr;
@@ -20,14 +20,14 @@ namespace CaOrdersServer
 		public KucoSocket(User usr)
 		{
 			_user = usr;
-			_apiKey = _user.ApiKeys.Find(k => k.Exchange == Exch.Kuco) ?? new();
+			_apiKey = _user.ApiKeys.Find(k => k.Exchange == Exch.Kuco);
 		}
 		public bool InitOrdersListener(int minutesToReconnect = 20)
 		{
 			bool b = false;
 			try
 			{
-				if (_apiKey.IsWorking)
+				if (_apiKey != null && _apiKey.IsWorking)
 				{
 					_socketClient = new KucoinSocketClient(
 						new KucoinSocketClientOptions()
@@ -91,7 +91,7 @@ namespace CaOrdersServer
 			_socketSubscr?.ReconnectAsync();
 
 			OnProgress?.Invoke(new Message(2, _user, Exch.Kuco, 
-				"KeepAlive", $"Kuco({_user.Name}) socket reconnected"));
+				"KeepAlive", $"socket reconnected"));
 
 			KeepAlive(minutesToReconnect);
 		}
@@ -104,7 +104,7 @@ namespace CaOrdersServer
 				if (setNull) _socketClient = null;
 
 				OnProgress?.Invoke(new Message(2, _user, Exch.Kuco, 
-					"Dispose", $"Kuco({_user.Name}) socket disposed"));
+					"Dispose", "socket disposed"));
 			}
 		}
 	}

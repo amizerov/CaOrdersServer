@@ -8,7 +8,8 @@ namespace CaOrdersServer
     public class KucoCaller : IApiCaller
     {
         public event Action<Message>? OnProgress;
-        
+        void Progress(Message msg) => OnProgress?.Invoke(msg);
+
         User _user;
         ApiKey? _apiKey;
         KucoinClient _restClient = new();
@@ -16,7 +17,7 @@ namespace CaOrdersServer
         public KucoCaller(User usr)
         {
             _user = usr;
-            _apiKey = _user.ApiKeys.Find(k => k.Exchange == Exch.Kuco);
+            _apiKey = _user.ApiKeys.Find(k => k.Exch == Exch.Kuco);
         }
         public bool CheckApiKey()
         {
@@ -89,7 +90,8 @@ namespace CaOrdersServer
         }
         public Orders GetOrders()
         {
-            Orders orders = new(_user); orders.OnProgress += OnProgress;
+            Orders orders = new(_user); orders.OnProgress += Progress;
+
             if (_apiKey != null && _apiKey.IsWorking)
             {
                 OnProgress?.Invoke(new Message(1, _user, Exch.Kuco,

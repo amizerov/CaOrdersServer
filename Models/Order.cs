@@ -171,57 +171,68 @@ namespace CaOrdersServer
             bool newOrUpdated = true;
             using (CaDbConnector db = new CaDbConnector())
             {
-                CaOrder? o = db.Orders!.Where(x =>
-                                x.usr_id == usr_id &&
-                                x.symbol == symbol &&
-                                x.ord_id == ord_id &&
-                                x.exchange == exchange).FirstOrDefault();
-                string msg = "";
-                if (o != null)
+                try
                 {
-                    if (o.state != state) msg = "state"; o.state = state;
-                    if (o.dt_exec is null && state == OState.Filled)
+                    CaOrder? o = db.Orders!.Where(x =>
+                                    x.usr_id == usr_id &&
+                                    x.symbol == symbol &&
+                                    x.ord_id == ord_id &&
+                                    x.exchange == exchange).FirstOrDefault();
+                    string msg = "";
+                    if (o != null)
                     {
-                        msg += "|dt_exec";
-                        o.dt_exec = dt_exec;
+                        if (o.state != state)
+                        {
+                            msg = $"state ({o.state}|{state})";
+                        }
+                        o.state = state;
+                        if (o.dt_exec is null && state == OState.Filled)
+                        {
+                            msg += "|dt_exec";
+                            o.dt_exec = dt_exec;
+                        }
+
+                        // эти поля ордера измениться не могут
+                        o.spotmar = spotmar; // но могли быть ранее заданы в базе не верно
+
+                        if (msg.Contains("state"))
+                        {
+                            int stt = (int)o.state;
+                            G.db_exec($"insert OrderStateHistory(oid, state, src) values({o.id}, {stt}, '{src}')");
+                            OnProgress?.Invoke(new Message(3, this.User!, (Exch)exchange, "Order.Update", msg));
+                        }
+                        if (msg.Length > 0)
+                        {
+                            o.dtu = DateTime.Now;
+                            msg = $"Order({symbol}|{(buysel ? "Buy" : "Sel")}|{price}) {msg} updated";
+                        }
+                        newOrUpdated = false;
                     }
-
-                    // эти поля ордера измениться не могут
-                    o.spotmar = spotmar; // но могли быть ранее заданы в базе не верно
-
-                    if (msg == "state")
+                    else
                     {
-                        int stt = (int)o.state;
-                        G.db_exec($"insert OrderStateHistory(oid, state, src) values({o.id}, {stt}, '{src}')");
-                        OnProgress?.Invoke(new Message(3, this.User!, (Exch)exchange, "Order.Update", msg));
+                        db.Orders!.Add(this);
+                        newOrUpdated = true;
+
+                        msg = $"New Order({symbol}|{(buysel ? "Buy" : "Sel")}|{price}) found";
                     }
                     if (msg.Length > 0)
                     {
-                        o.dtu = DateTime.Now;
-                        msg = $"Order({symbol}|{buysel}|{price}) {msg} updated";
-                    }
-                }
-                else
-                {
-                    db.Orders!.Add(this);
-                    newOrUpdated = false;
-
-                    msg = $"New Order({symbol}|{buysel}|{price}) found";
-                }
-                if (msg.Length > 0)
-                {
-                    OnProgress?.Invoke(new Message(3, this.User!, (Exch)exchange, "Order.Update", msg));
-                    try
-                    {
-                        db.SaveChanges();
-                    }
-                    catch (Exception ex)
-                    {
-                        msg = msg + "\r\n" + "Error: " + ex.Message + "\r\n" + ex.InnerException;
                         OnProgress?.Invoke(new Message(3, this.User!, (Exch)exchange, "Order.Update", msg));
+                        try
+                        {
+                            db.SaveChanges();
+                        }
+                        catch (Exception ex)
+                        {
+                            msg = msg + "\r\n" + "Error: " + ex.Message + "\r\n" + ex.InnerException;
+                            OnProgress?.Invoke(new Message(3, this.User!, (Exch)exchange, "Order.Update", msg));
+                        }
                     }
                 }
-
+                catch(Exception ex)
+                {
+                    OnProgress?.Invoke(new Message(3, this.User!, (Exch)exchange, "Exception in Order.Update", ex.Message));
+                }
                 return newOrUpdated;
             }
         }

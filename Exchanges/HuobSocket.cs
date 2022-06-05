@@ -20,7 +20,7 @@ namespace CaOrdersServer
 		public HuobSocket(User usr)
 		{
 			_user = usr;
-			_apiKey = _user.ApiKeys.Find(k => k.Exchange == Exch.Kuco);
+			_apiKey = _user.ApiKeys.Find(k => k.Exch == Exch.Kuco);
 
 			if (_apiKey != null && _apiKey.IsWorking)
 			{

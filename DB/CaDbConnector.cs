@@ -1,5 +1,7 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿using am.BL;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Conventions;
+using System.Data;
 
 namespace CaOrdersServer
 {
@@ -14,5 +16,16 @@ namespace CaOrdersServer
 
         public virtual DbSet<CaOrder>? Orders { get; set; }
         public virtual DbSet<CaBalance>? Balances{ get; set; }
+    }
+    public class Db
+    {
+        public static DataTable GetOrdersDt(int uid, int eid)
+        {
+            string where = uid > 0 ? " where usr_id=" + uid : "";
+            where += uid > 0 && eid > 0 ? " and exchange=" + eid : "";
+
+            DataTable dt = G.db_select("select * from Orders o join Users u on o.usr_id=u.id" + where);
+            return dt;
+        }
     }
 }

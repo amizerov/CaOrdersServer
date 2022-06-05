@@ -34,8 +34,11 @@
             this.btnListen = new System.Windows.Forms.Button();
             this.timer_15min = new System.Windows.Forms.Timer(this.components);
             this.btnKeys = new System.Windows.Forms.Button();
-            this.xtraTabControl1 = new DevExpress.XtraTab.XtraTabControl();
+            this.tabControl = new DevExpress.XtraTab.XtraTabControl();
             this.tabCaller = new DevExpress.XtraTab.XtraTabPage();
+            this.tabTable = new DevExpress.XtraTab.XtraTabPage();
+            this.gcOrders = new DevExpress.XtraGrid.GridControl();
+            this.gvOrders = new DevExpress.XtraGrid.Views.Grid.GridView();
             this.tabSocket = new DevExpress.XtraTab.XtraTabPage();
             this.txtLog1 = new System.Windows.Forms.TextBox();
             this.tabOrders = new DevExpress.XtraTab.XtraTabPage();
@@ -47,9 +50,12 @@
             this.statusStrip1 = new System.Windows.Forms.StatusStrip();
             this.toolStripStatusLabel1 = new System.Windows.Forms.ToolStripStatusLabel();
             this.btnTimer = new System.Windows.Forms.Button();
-            ((System.ComponentModel.ISupportInitialize)(this.xtraTabControl1)).BeginInit();
-            this.xtraTabControl1.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.tabControl)).BeginInit();
+            this.tabControl.SuspendLayout();
             this.tabCaller.SuspendLayout();
+            this.tabTable.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.gcOrders)).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)(this.gvOrders)).BeginInit();
             this.tabSocket.SuspendLayout();
             this.tabOrders.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.splitContainer1)).BeginInit();
@@ -108,15 +114,16 @@
             this.btnKeys.UseVisualStyleBackColor = true;
             this.btnKeys.Click += new System.EventHandler(this.btnKeys_Click);
             // 
-            // xtraTabControl1
+            // tabControl
             // 
-            this.xtraTabControl1.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.xtraTabControl1.Location = new System.Drawing.Point(0, 0);
-            this.xtraTabControl1.Name = "xtraTabControl1";
-            this.xtraTabControl1.SelectedTabPage = this.tabCaller;
-            this.xtraTabControl1.Size = new System.Drawing.Size(570, 578);
-            this.xtraTabControl1.TabIndex = 3;
-            this.xtraTabControl1.TabPages.AddRange(new DevExpress.XtraTab.XtraTabPage[] {
+            this.tabControl.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.tabControl.Location = new System.Drawing.Point(0, 0);
+            this.tabControl.Name = "tabControl";
+            this.tabControl.SelectedTabPage = this.tabCaller;
+            this.tabControl.Size = new System.Drawing.Size(570, 578);
+            this.tabControl.TabIndex = 3;
+            this.tabControl.TabPages.AddRange(new DevExpress.XtraTab.XtraTabPage[] {
+            this.tabTable,
             this.tabCaller,
             this.tabSocket,
             this.tabOrders});
@@ -128,6 +135,31 @@
             this.tabCaller.Size = new System.Drawing.Size(568, 553);
             this.tabCaller.TabPageWidth = 100;
             this.tabCaller.Text = "Caller";
+            // 
+            // tabTable
+            // 
+            this.tabTable.Controls.Add(this.gcOrders);
+            this.tabTable.Name = "tabTable";
+            this.tabTable.Size = new System.Drawing.Size(568, 553);
+            this.tabTable.TabPageWidth = 100;
+            this.tabTable.Text = "Table";
+            // 
+            // gcOrders
+            // 
+            this.gcOrders.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.gcOrders.Location = new System.Drawing.Point(0, 0);
+            this.gcOrders.MainView = this.gvOrders;
+            this.gcOrders.Name = "gcOrders";
+            this.gcOrders.Size = new System.Drawing.Size(568, 553);
+            this.gcOrders.TabIndex = 0;
+            this.gcOrders.ViewCollection.AddRange(new DevExpress.XtraGrid.Views.Base.BaseView[] {
+            this.gvOrders});
+            // 
+            // gvOrders
+            // 
+            this.gvOrders.GridControl = this.gcOrders;
+            this.gvOrders.Name = "gvOrders";
+            this.gvOrders.OptionsView.ShowGroupPanel = false;
             // 
             // tabSocket
             // 
@@ -199,7 +231,7 @@
             // 
             // splitContainer1.Panel2
             // 
-            this.splitContainer1.Panel2.Controls.Add(this.xtraTabControl1);
+            this.splitContainer1.Panel2.Controls.Add(this.tabControl);
             this.splitContainer1.Size = new System.Drawing.Size(859, 578);
             this.splitContainer1.SplitterDistance = 285;
             this.splitContainer1.TabIndex = 4;
@@ -258,11 +290,15 @@
             this.Controls.Add(this.btnOrder);
             this.Name = "FrmMain";
             this.Text = "Orders checker";
+            this.FormClosing += new System.Windows.Forms.FormClosingEventHandler(this.FrmMain_FormClosing);
             this.Load += new System.EventHandler(this.FrmMain_Load);
-            ((System.ComponentModel.ISupportInitialize)(this.xtraTabControl1)).EndInit();
-            this.xtraTabControl1.ResumeLayout(false);
+            ((System.ComponentModel.ISupportInitialize)(this.tabControl)).EndInit();
+            this.tabControl.ResumeLayout(false);
             this.tabCaller.ResumeLayout(false);
             this.tabCaller.PerformLayout();
+            this.tabTable.ResumeLayout(false);
+            ((System.ComponentModel.ISupportInitialize)(this.gcOrders)).EndInit();
+            ((System.ComponentModel.ISupportInitialize)(this.gvOrders)).EndInit();
             this.tabSocket.ResumeLayout(false);
             this.tabSocket.PerformLayout();
             this.tabOrders.ResumeLayout(false);
@@ -286,7 +322,7 @@
         private Button btnListen;
         private System.Windows.Forms.Timer timer_15min;
         private Button btnKeys;
-        private DevExpress.XtraTab.XtraTabControl xtraTabControl1;
+        private DevExpress.XtraTab.XtraTabControl tabControl;
         private DevExpress.XtraTab.XtraTabPage tabCaller;
         private DevExpress.XtraTab.XtraTabPage tabSocket;
         private DevExpress.XtraTab.XtraTabPage tabOrders;
@@ -299,5 +335,8 @@
         private StatusStrip statusStrip1;
         private ToolStripStatusLabel toolStripStatusLabel1;
         private Button btnTimer;
+        private DevExpress.XtraTab.XtraTabPage tabTable;
+        private DevExpress.XtraGrid.GridControl gcOrders;
+        private DevExpress.XtraGrid.Views.Grid.GridView gvOrders;
     }
 }

@@ -10,6 +10,7 @@ namespace CaOrdersServer
     public class BinaCaller : IApiCaller
     {
         public event Action<Message>? OnProgress;
+        void Progress(Message msg) => OnProgress?.Invoke(msg);
 
         protected User _user;
         protected ApiKey? _apiKey;
@@ -18,7 +19,7 @@ namespace CaOrdersServer
 
         public BinaCaller(User usr) { 
             _user = usr;
-            _apiKey = _user.ApiKeys.Find(k => k.Exchange == Exch.Bina);
+            _apiKey = _user.ApiKeys.Find(k => k.Exch == Exch.Bina);
         }
         public bool CheckApiKey()
         {
@@ -71,7 +72,8 @@ namespace CaOrdersServer
         }
         public Orders GetOrders()
         {
-            Orders orders = new(_user); orders.OnProgress += OnProgress;
+            Orders orders = new(_user); orders.OnProgress += Progress;
+
             if (_apiKey != null && _apiKey.IsWorking)
             {
                 OnProgress?.Invoke(new Message(1, _user, Exch.Bina, "GetOrders", "GetOrders started"));

@@ -41,24 +41,23 @@ namespace CaOrdersServer
         public event Action<Message>? OnProgress;
         void Progress(Message msg) => OnProgress?.Invoke(msg);
 
-        User usr;
         ApiKey _apiKey;
         IApiCaller _caller;
         IApiSocket _socket;
 
-        public int ID { get { return (int)_apiKey.Exchange; } }
-        public string Name { get { return _apiKey.Exchange.ToString(); } }
+        public int ID { get { return (int)_apiKey.Exch; } }
+        public string Name { get { return _apiKey.Exch.ToString(); } }
         public Exchange(ApiKey key)
         {
             _apiKey = key;
-            usr = key.User;
+            User usr = key.User;
 
-            if (_apiKey.Exchange == Exch.Bina)
+            if (_apiKey.Exch == Exch.Bina)
             {
                 _caller = new BinaCaller(usr);
                 _socket = new BinaSocket(usr);
             }
-            else if (_apiKey.Exchange == Exch.Kuco)
+            else if (_apiKey.Exch == Exch.Kuco)
             {
                 _caller = new KucoCaller(usr);
                 _socket = new KucoSocket(usr);
@@ -82,9 +81,12 @@ namespace CaOrdersServer
         }
         public void UpdateOrders()
         {
-            Orders orders = _caller.GetOrders();
-            orders.OnProgress += Progress;
-            orders.Update();
+            Task.Run(() =>
+            {
+                Orders orders = _caller.GetOrders();
+                orders.OnProgress += Progress;
+                orders.Update();
+            });
         }
         public bool InitOrdersListener()
         {

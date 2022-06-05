@@ -9,6 +9,7 @@ namespace CaOrdersServer
     public class HuobCaller : IApiCaller
     {
         public event Action<Message>? OnProgress;
+        void Progress(Message msg) => OnProgress?.Invoke(msg);
 
         User _user;
         ApiKey? _apiKey;
@@ -17,7 +18,7 @@ namespace CaOrdersServer
         public HuobCaller(User usr)
         {
             _user = usr;
-            _apiKey = _user.ApiKeys.Find(k => k.Exchange == Exch.Huob);
+            _apiKey = _user.ApiKeys.Find(k => k.Exch == Exch.Huob);
         }
         public bool CheckApiKey()
         {
@@ -82,7 +83,8 @@ namespace CaOrdersServer
         }
         public Orders GetOrders()
         {
-            Orders orders = new(_user); orders.OnProgress += OnProgress;
+            Orders orders = new(_user); orders.OnProgress += Progress;
+
             if (_apiKey != null && _apiKey.IsWorking)
             {
                 OnProgress?.Invoke(new Message(1, _user, Exch.Huob, "GetOrders", "GetOrders started"));

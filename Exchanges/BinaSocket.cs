@@ -26,7 +26,7 @@ namespace CaOrdersServer
 		public BinaSocket(User usr)
 		{
 			_user = usr;
-			_apiKey = _user.ApiKeys.Find(k => k.Exchange == Exch.Bina);
+			_apiKey = _user.ApiKeys.Find(k => k.Exch == Exch.Bina);
 
 			if (_apiKey != null && _apiKey.IsWorking)
 			{

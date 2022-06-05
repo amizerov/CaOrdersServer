@@ -33,32 +33,6 @@ namespace CaOrdersServer
                 exc.OnProgress += Progress;
             }
         }
-        public bool CheckApiKeys(Exch exc) 
-        {
-            Exchange? exch = Exchanges.Find(e => e.ID == (int)exc);
-            if(exch == null)
-                return false;
-            else
-                return exch.CheckApiKeys();
-        }
-         /* Начальная загрузка ордеров на всех биржах, 
-         * вызывается только один раз при запуске программы,
-         * ордера сохраняются или обновляются в БД, 
-         * потом их статусы обновляются через сокет.
-         * Совмещен вызов для спота и маржина.
-         */
-        public void UpdateOrders(Exch exc)
-        {
-            Exchange? excha = Exchanges.Find(e => e.ID == (int)exc);
-            if(excha != null)
-                Task.Run(() =>
-                {
-                    OnProgress?.Invoke(new Message(4, this, exc, "UpdateOrders", "start"));
-                    excha.UpdateOrders();
-                    OnProgress?.Invoke(new Message(4, this, exc, "UpdateOrders", "end"));
-                });
-        }
-        // <--------------------------
     }
 
     public class Users : List<User>

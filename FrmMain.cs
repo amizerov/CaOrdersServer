@@ -1,3 +1,4 @@
+using am.BL;
 using DevExpress.XtraEditors;
 
 namespace CaOrdersServer
@@ -10,6 +11,7 @@ namespace CaOrdersServer
         Users users = new();
         User? SelectedUser;
         Exchange? SelectedExch;
+        bool needToRestoreTableOrdersLayout = true;
 
         public FrmMain()
         {
@@ -18,7 +20,7 @@ namespace CaOrdersServer
         }
         private void FrmMain_Load(object sender, EventArgs e)
         {
-            users.OnProgress += OnProgress;
+            users.OnProgress += Progress;
 
             LoadTreeList();
 
@@ -33,6 +35,9 @@ namespace CaOrdersServer
 
             /* Каждые 15 минут check api keys */
             //timer_15min.Start();  
+
+            treeList.RestoreLayoutFromXml("tree.xml");
+            gvOrders.RestoreLayoutFromXml("orde.xml");
         }
 
         private void btnKeys_Click(object sender, EventArgs e)
@@ -58,8 +63,6 @@ namespace CaOrdersServer
         }
         private void btnOrder_Click(object sender, EventArgs e)
         {
-            txtLog.Text = "";
-
             if (SelectedExch != null)
             {
                 // Выбрана конкретная Биржа конкретного Юзера
@@ -124,6 +127,12 @@ namespace CaOrdersServer
             SelectedUser = users.Find(u => u.ID == uid);
             if(SelectedUser != null)
                 SelectedExch = SelectedUser.Exchanges.Find(e => e.ID == eid);
+
+            gcOrders.DataSource = Db.GetOrdersDt(uid, eid);
+
+            if(needToRestoreTableOrdersLayout)
+                gvOrders.RestoreLayoutFromXml("orde.xml");
+            needToRestoreTableOrdersLayout = false;
         }
 
         void LoadTreeList()
@@ -147,7 +156,7 @@ namespace CaOrdersServer
             treeList.ExpandAll();
         }
 
-        void OnProgress(Message msg)
+        void Progress(Message msg)
         {
             string m = 
                 $"[{DateTime.Now.ToString("hh:mm:ss")}] {msg.exch}({msg.user.Name}) {msg.msg}\r\n";
@@ -167,6 +176,12 @@ namespace CaOrdersServer
                         break;
                 }
             }));
+        }
+
+        private void FrmMain_FormClosing(object sender, FormClosingEventArgs e)
+        {
+            treeList.SaveLayoutToXml("tree.xml");
+            gvOrders.SaveLayoutToXml("orde.xml");
         }
     }
 }

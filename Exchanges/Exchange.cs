@@ -19,7 +19,7 @@ namespace CaOrdersServer
 
         public bool CheckApiKey();
         public Orders GetOrders();
-        public Order GetOrder(string orderId);
+        public Order GetOrder(string orderId, string symbol = "");
     }
     interface IApiSocket
     {
@@ -75,17 +75,23 @@ namespace CaOrdersServer
         {
             return _caller.CheckApiKey();
         }
-        public Order GetOrder(string orderId)
+        public Order GetOrder(string orderId, string symbol = "")
         {
-            return _caller.GetOrder(orderId);
+            return _caller.GetOrder(orderId, symbol);
         }
         public void UpdateOrders()
         {
             Task.Run(() =>
             {
+                Progress(new Message(1, _apiKey.User, _apiKey.Exch, "Exchange.UpdateOrders",
+                    "-------------------------------------START--ORDER--UPDATE-->"));
+                
                 Orders orders = _caller.GetOrders();
                 orders.OnProgress += Progress;
                 orders.Update();
+
+                Progress(new Message(1, _apiKey.User, _apiKey.Exch, "Exchange.UpdateOrders",
+                    "-------------------------------------ORDER--UPDATE--FINISHED-->"));
             });
         }
         public bool InitOrdersListener()

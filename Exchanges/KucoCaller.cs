@@ -75,7 +75,7 @@ namespace CaOrdersServer
             }
             return balances;
         }
-        public Order GetOrder(string oid)
+        public Order GetOrder(string oid, string symbol = "")
         {
             KucoinOrder order = new KucoinOrder();
             if (_apiKey != null && _apiKey.IsWorking)
@@ -94,56 +94,58 @@ namespace CaOrdersServer
 
             if (_apiKey != null && _apiKey.IsWorking)
             {
-                OnProgress?.Invoke(new Message(1, _user, Exch.Kuco,
-                    "GetOrders", $"Kuco({_user.Name}): GetOrders started"));
+                OnProgress?.Invoke(new Message(1, _user, Exch.Kuco, "GetOrders", "Started"));
                 
-                // Получаем ордера по страницам с 1-ой
-                var rr = _restClient.SpotApi.Trading.GetRecentOrdersAsync().Result;
-                if(rr.Success)
+                var r = _restClient.SpotApi.Trading.GetRecentOrdersAsync().Result;
+                if(r.Success)
                 {
-                    foreach (var ord in rr.Data)
+                    foreach (var ord in r.Data)
                     {
-                        if (!orders.Any(o => o.ord_id == ord.Id))
-                        {
-                            orders.Add(new Order(ord, _user.ID));
-                        }
+                        orders.Add(new Order(ord, _user.ID));
                     }
-                    OnProgress?.Invoke(new Message(1, _user, Exch.Kuco, 
-                        "GetOrders", $"GetRecentOrders Count={orders.Count}"));
-                }
-                var r = _restClient.SpotApi.Trading.GetOrdersAsync().Result;
-                if (r.Success)
-                {
-                    int countPages = r.Data.TotalPages;
-                    int currPage = r.Data.CurrentPage;
-                    int totalOrders = r.Data.TotalItems;
-                    while (currPage <= countPages)
+                    OnProgress?.Invoke(new Message(1, _user, Exch.Kuco, "GetRecentOrders", $"Count={orders.Count}"));
+                    
+                    var rr = _restClient.SpotApi.Trading.GetOrdersAsync(
+                            startTime: DateTime.Now.AddDays(-30)
+                        ).Result;
+
+                    if (rr.Success)
                     {
-                        KucoinPaginated<KucoinOrder> po = r.Data;
-                        foreach (var ord in po.Items)
+                        int countPages = rr.Data.TotalPages;
+                        int currPage = rr.Data.CurrentPage;
+                        int totalOrders = rr.Data.TotalItems;
+
+                        // Получаем ордера по страницам начиная с 1-ой
+                        while (currPage <= countPages)
                         {
-                            if (!orders.Any(o => o.ord_id == ord.Id))
+                            KucoinPaginated<KucoinOrder> po = rr.Data;
+                            foreach (var ord in po.Items)
                             {
                                 orders.Add(new Order(ord, _user.ID));
                             }
-                        }
-                        // получаем следующую старницу ордеров
-                        r = _restClient.SpotApi.Trading.GetOrdersAsync(currentPage: ++currPage).Result;
-                        if (!r.Success)
-                        {
-                            OnProgress?.Invoke(new Message(1, _user, Exch.Kuco, "GetOrders",
-                                $"GetOrders(page:{currPage}) error \r\n[{r.Error?.Message}]"));
+                            // получаем следующую старницу ордеров
+                            rr = _restClient.SpotApi.Trading.GetOrdersAsync(currentPage: ++currPage).Result;
+                            if (!rr.Success)
+                            {
+                                OnProgress?.Invoke(new Message(1, _user, Exch.Kuco, 
+                                    $"GetOrders(page:{currPage})", $"Error: {rr.Error?.Message}"));
 
-                            return orders;
+                                return orders;
+                            }
                         }
+                        OnProgress?.Invoke(new Message(1, _user, Exch.Kuco,
+                            "GetOrders", $"Count={orders.Count}|{totalOrders}"));
                     }
-                    OnProgress?.Invoke(new Message(1, _user, Exch.Kuco, 
-                        "GetOrders", $"GetOrders orders.Count = {orders.Count}|{totalOrders}"));
+                    else
+                    {
+                        OnProgress?.Invoke(new Message(1, _user, Exch.Kuco,
+                            "GetOrders", $"Error: {rr.Error?.Message}"));
+                    }
                 }
                 else
                 {
-                    OnProgress?.Invoke(new Message(1, _user, Exch.Kuco, 
-                        "GetOrders", $"GetOrders error \r\n[{r.Error?.Message}]"));
+                    OnProgress?.Invoke(new Message(1, _user, Exch.Kuco,
+                        "GetRecentOrders", $"Error: {r.Error?.Message}"));
                 }
             }
             return orders;

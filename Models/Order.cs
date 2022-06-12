@@ -13,6 +13,8 @@ namespace CaOrdersServer
     {
         public User? User;
         public event Action<Message>? OnProgress;
+        void Progress(Message msg) => OnProgress?.Invoke(msg);
+
         public Order() { }
         //---------------------------------
         public Order(BinanceOrder o, bool sm = true /*spot, false - marg*/)
@@ -66,7 +68,7 @@ namespace CaOrdersServer
 
             ord_id = o.Id.ToString();
             clientOrd_id = o.ClientOrderId?.ToString();
-            exchange = 2; // 1 - Bina, 2 - Kuco, 3 - Huob
+            exchange = (int)Exch.Kuco; // 1 - Bina, 2 - Kuco, 3 - Huob
             symbol = o.Symbol;
             spotmar = o.TradeType == TradeType.SpotTrade;
             buysel = o.Side == OrderSide.Buy;
@@ -85,7 +87,7 @@ namespace CaOrdersServer
             usr_id = uid;
 
             ord_id = o.OrderId;
-            exchange = 2;
+            exchange = (int)Exch.Kuco;
             symbol = o.Symbol; 
             //spotmar = true; // через Socket не знаем, уточняем через Call
             buysel = o.Side == OrderSide.Buy;
@@ -199,7 +201,7 @@ namespace CaOrdersServer
                         {
                             int stt = (int)o.state;
                             G.db_exec($"insert OrderStateHistory(oid, state, src) values({o.id}, {stt}, '{src}')");
-                            OnProgress?.Invoke(new Message(3, this.User!, (Exch)exchange, "Order.Update", msg));
+                            Progress(new Message(3, this.User!, (Exch)exchange, "Order.Update", msg));
                         }
                         if (msg.Length > 0)
                         {
@@ -213,25 +215,26 @@ namespace CaOrdersServer
                         db.Orders!.Add(this);
                         newOrUpdated = true;
 
-                        msg = $"New Order({symbol}|{(buysel ? "Buy" : "Sel")}|{price}) found";
+                        msg = $"New Order({ord_id}|{symbol}|{(buysel ? "Buy" : "Sel")}|{price}|{qty}) found {(OState)state}";
                     }
                     if (msg.Length > 0)
                     {
-                        OnProgress?.Invoke(new Message(3, this.User!, (Exch)exchange, "Order.Update", msg));
+                        Progress(new Message(3, this.User!, (Exch)exchange, "Order.Update", msg));
                         try
                         {
+                            dtu = DateTime.Now;
                             db.SaveChanges();
                         }
                         catch (Exception ex)
                         {
-                            msg = msg + "\r\n" + "Error: " + ex.Message + "\r\n" + ex.InnerException;
-                            OnProgress?.Invoke(new Message(3, this.User!, (Exch)exchange, "Order.Update", msg));
+                            msg = msg + "\r\n" + "Exception: " + ex.Message + "\r\n" + ex.InnerException;
+                            Progress(new Message(3, this.User!, (Exch)exchange, "Order.Update", msg));
                         }
                     }
                 }
                 catch(Exception ex)
                 {
-                    OnProgress?.Invoke(new Message(3, this.User!, (Exch)exchange, "Exception in Order.Update", ex.Message));
+                    Progress(new Message(3, this.User!, (Exch)exchange, "Exception in Order.Update", ex.Message));
                 }
                 return newOrUpdated;
             }
@@ -266,29 +269,50 @@ namespace CaOrdersServer
             listOrdersComaSeparated += "'0'";
 
             int not = G._I(G.db_select(
-                @$"update Orders set state = 3, dtu = getdate() 
+                @$"--update Orders set state = 3, dtu = getdate() 
+
+                   select count(*) c from Orders 
                    where usr_id={_user.ID} and exchange={exchan} 
                     and not ord_id in ({listOrdersComaSeparated})
                 
-                select @@ROWCOUNT
+                --select @@ROWCOUNT
                 "
             ));
 
-            OnProgress?.Invoke(new Message(3, _user, (Exch)exchan, 
-                "Order.Update", $"GetOrders all={cnt} opn={opn} can={can} fil={fil} not={not}"));
+            DateTime f = (DateTime)this.MinBy(o => o.dt_create)?.dt_create!;
+            DateTime t = (DateTime)this.MaxBy(o => o.dt_create)?.dt_create!;
+
+            int ind = G._I(G.db_select(
+                @$"--update Orders set state = 3, dtu = getdate() 
+
+                    select count(*) c from Orders 
+                    where usr_id={_user.ID} and exchange={exchan} 
+                    and dt_create between '{f.ToString("yyyy-MM-dd")} 00:00' and '{t.ToString("yyyy-MM-dd")} 23:59'
+                
+                --select @@ROWCOUNT
+                "
+            ));
+
+            Progress(new Message(3, _user, (Exch)exchan, "Order.Update", 
+                $"GetOrders({(Exch)exchan}) all:{cnt} opn:{opn} can:{can} fil:{fil} not:{not} ind:{ind} from:{f} to:{t}"));
         }
         public new void Add(Order o)
         {
-            exchan = o.exchange;
-            o.usr_id = _user.ID;
             o.User = _user;
+            o.usr_id = _user.ID;
+            exchan = o.exchange;
 
-            base.Add(o);
-
-            o.OnProgress += Progress;
-            o.Update($"{(Exch)o.exchange}Caller");
+            if (!this.Any(ord => ord.ord_id == o.ord_id))
+            {
+                base.Add(o);
+                o.OnProgress += Progress;
+                o.Update($"{(Exch)o.exchange}Caller");
+            }
+            else
+            {
+                Progress(new Message(3, _user, (Exch)exchan, 
+                    "Order.Add", $"this order({o.ord_id}|{o.dt_create}) already added"));
+            }
         }
-
     }
-
 }

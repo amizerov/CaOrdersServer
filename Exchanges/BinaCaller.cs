@@ -66,9 +66,25 @@ namespace CaOrdersServer
             }
             return balances;
         }
-        public Order GetOrder(string oid) 
+        public Order GetOrder(string oid, string symbol = "") 
         {
-            return new Order();
+            bool SPOT_MARG = true;
+            Order order = new Order();
+            var res = _restClient?.SpotApi.Trading.GetOrderAsync(symbol, long.Parse(oid)).Result;
+            if(res != null && res.Success)
+            {
+                BinanceOrder o = res.Data;
+                order = new Order(o, SPOT_MARG);
+            }
+            SPOT_MARG = false;
+            res = _restClient?.SpotApi.Trading.GetMarginOrderAsync(symbol, long.Parse(oid)).Result;
+            if (res != null && res.Success)
+            {
+                BinanceOrder o = res.Data;
+                order = new Order(o, SPOT_MARG);
+            }
+
+            return order;
         }
         public Orders GetOrders()
         {
@@ -76,12 +92,12 @@ namespace CaOrdersServer
 
             if (_apiKey != null && _apiKey.IsWorking)
             {
-                OnProgress?.Invoke(new Message(1, _user, Exch.Bina, "GetOrders", "GetOrders started"));
+                Progress(new Message(1, _user, Exch.Bina, "GetOrders", "Started"));
 
                 List<string> symbols = GetUserTradedSymbols();
                 foreach (var symbo in symbols)
                 {
-                    int orderFound = 0;
+                    int ordersFound = 0;
                     var resSpot = _restClient!.SpotApi.Trading.GetOrdersAsync(symbo).Result;
                     if (resSpot.Success)
                     {
@@ -89,14 +105,14 @@ namespace CaOrdersServer
                             foreach(var o in resSpot.Data)
                             {
                                 orders.Add(new Order(o, true));
-                                orderFound = orders.Count;
+                                ordersFound = orders.Count;
                             }
                         else
-                            OnProgress?.Invoke(new Message(1, _user, Exch.Bina, "GetOrders", 
+                            Progress(new Message(1, _user, Exch.Bina, "GetOrders", 
                                 "SPOT {symbo} GetOrders Error: resSpot.Data == NULL"));
                     }
                     else
-                        OnProgress?.Invoke(new Message(1, _user, Exch.Bina, "GetOrders", 
+                        Progress(new Message(1, _user, Exch.Bina, "GetOrders", 
                             $"SPOT {symbo} GetOrders Error: {resSpot.Error?.Message}"));
 
 
@@ -109,24 +125,25 @@ namespace CaOrdersServer
                                 foreach (var o in resMarg.Data)
                                 {
                                     orders.Add(new Order(o, false));
-                                    orderFound = orders.Count;
+                                    ordersFound = orders.Count;
                                 }
                             else
-                                OnProgress?.Invoke(new Message(1, _user, Exch.Bina, "GetOrders", 
+                                Progress(new Message(1, _user, Exch.Bina, "GetOrders", 
                                     $"MARG {symbo} GetMarginOrders Error: resMarg.Data == NULL"));
                         }
                         else
-                            OnProgress?.Invoke(new Message(1, _user, Exch.Bina, "GetOrders",
+                            Progress(new Message(1, _user, Exch.Bina, "GetOrders",
                                 $"MARG {symbo} GetMarginOrders Error: {resMarg.Error?.Message}"));
                     }
-                    if (orderFound > 0)
-                        OnProgress?.Invoke(new Message(1, _user, Exch.Bina, "GetOrders", 
-                            $"{orderFound} orders found for {symbo}"));
+                    if (ordersFound > 0)
+                        Progress(new Message(1, _user, Exch.Bina, "GetOrders", 
+                            $"{ordersFound} orders found for {symbo}"));
 
                     Thread.Sleep(1000);
+                    ordersFound = 0;
                 }
-                OnProgress?.Invoke(new Message(1, _user, Exch.Bina, "GetOrders",
-                    $"GetOrders orders.Count = {orders.Count}"));
+                Progress(new Message(1, _user, Exch.Bina, "GetOrders",
+                    $"Finished, orders.Count = {orders.Count}"));
             }
             return orders;
         }

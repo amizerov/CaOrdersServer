@@ -37,7 +37,7 @@ namespace CaOrdersServer
             //timer_15min.Start();  
 
             treeList.RestoreLayoutFromXml("tree.xml");
-            gvOrders.RestoreLayoutFromXml("orde.xml");
+            //gvOrders.RestoreLayoutFromXml("orde.xml");
         }
 
         private void btnKeys_Click(object sender, EventArgs e)
@@ -159,7 +159,7 @@ namespace CaOrdersServer
         void Progress(Message msg)
         {
             string m = 
-                $"[{DateTime.Now.ToString("hh:mm:ss")}] {msg.exch}({msg.user.Name}) {msg.msg}\r\n";
+                $"[{DateTime.Now.ToString("hh:mm:ss")}] {msg.exch}({msg.user.Name}) {msg.src} {msg.msg}\r\n";
             
             Invoke(new Action(() =>
             {
@@ -182,6 +182,17 @@ namespace CaOrdersServer
         {
             treeList.SaveLayoutToXml("tree.xml");
             gvOrders.SaveLayoutToXml("orde.xml");
+        }
+
+        private void btnUpdateOneOrderByID_Click(object sender, EventArgs e)
+        {
+            string? ord_id = gvOrders.GetFocusedDataRow()["ord_id"].ToString();
+            string? symbol = gvOrders.GetFocusedDataRow()["symbol"].ToString();
+            if (SelectedExch != null && ord_id != null && symbol != null)
+            {
+                Order o = SelectedExch.GetOrder(ord_id, symbol);
+                o.Update("Manual");
+            }
         }
     }
 }

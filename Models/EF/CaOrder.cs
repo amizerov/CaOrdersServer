@@ -1,4 +1,3 @@
-using am.BL;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
@@ -6,7 +5,7 @@ namespace CaOrdersServer
 {
     public enum OState
     {
-        Canceled,
+        Canceled = 0,
         Open,
         Filled,
         NotFound,

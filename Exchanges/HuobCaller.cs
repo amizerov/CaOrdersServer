@@ -77,7 +77,7 @@ namespace CaOrdersServer
             }
             return balances;
         }
-        public Order GetOrder(string oid)
+        public Order GetOrder(string oid, string symbol = "")
         {
             return new Order();
         }

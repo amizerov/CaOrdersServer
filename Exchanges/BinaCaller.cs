@@ -97,18 +97,22 @@ namespace CaOrdersServer
                 List<string> symbols = GetUserTradedSymbols();
                 foreach (var symbo in symbols)
                 {
-                    int ordersFound = 0;
+                    int cntSpot = 0, cntMarg = 0, ordersFound = 0;
+
                     var resSpot = _restClient!.SpotApi.Trading.GetOrdersAsync(symbo).Result;
                     if (resSpot.Success)
                     {
-                        if(resSpot.Data != null)
-                            foreach(var o in resSpot.Data)
+                        if (resSpot.Data != null)
+                        {
+                            cntSpot = resSpot.Data.Count();
+                            foreach (var o in resSpot.Data)
                             {
                                 orders.Add(new Order(o, true));
                                 ordersFound = orders.Count;
                             }
+                        }
                         else
-                            Progress(new Message(1, _user, Exch.Bina, "GetOrders", 
+                            Progress(new Message(1, _user, Exch.Bina, "GetOrders",
                                 "SPOT {symbo} GetOrders Error: resSpot.Data == NULL"));
                     }
                     else
@@ -122,25 +126,28 @@ namespace CaOrdersServer
                         if (resMarg.Success)
                         {
                             if (resMarg.Data != null)
+                            {
+                                cntMarg = resMarg.Data.Count();
                                 foreach (var o in resMarg.Data)
                                 {
                                     orders.Add(new Order(o, false));
                                     ordersFound = orders.Count;
                                 }
+                            }
                             else
-                                Progress(new Message(1, _user, Exch.Bina, "GetOrders", 
+                                Progress(new Message(1, _user, Exch.Bina, "GetOrders",
                                     $"MARG {symbo} GetMarginOrders Error: resMarg.Data == NULL"));
                         }
                         else
                             Progress(new Message(1, _user, Exch.Bina, "GetOrders",
                                 $"MARG {symbo} GetMarginOrders Error: {resMarg.Error?.Message}"));
                     }
-                    if (ordersFound > 0)
-                        Progress(new Message(1, _user, Exch.Bina, "GetOrders", 
-                            $"{ordersFound} orders found for {symbo}"));
+                    if (cntSpot + cntMarg > 0)
+                        Progress(new Message(1, _user, Exch.Bina, $"GetOrders({symbo})", 
+                            $"Spot:{cntSpot} Marg:{cntMarg} All:{ordersFound} orders found"));
 
                     Thread.Sleep(1000);
-                    ordersFound = 0;
+                    cntSpot = cntMarg = 0;
                 }
                 Progress(new Message(1, _user, Exch.Bina, "GetOrders",
                     $"Finished, orders.Count = {orders.Count}"));

@@ -269,13 +269,12 @@ namespace CaOrdersServer
             listOrdersComaSeparated += "'0'";
 
             int not = G._I(G.db_select(
-                @$"--update Orders set state = 3, dtu = getdate() 
-
-                   select count(*) c from Orders 
-                   where usr_id={_user.ID} and exchange={exchan} 
-                    and not ord_id in ({listOrdersComaSeparated})
+                @$"
+                    update Orders set IsNotFound=1, dtu = getdate() 
+                     where usr_id={_user.ID} and exchange={exchan} 
+                       and not ord_id in ({listOrdersComaSeparated})
                 
-                --select @@ROWCOUNT
+                    select @@ROWCOUNT
                 "
             ));
 
@@ -283,18 +282,15 @@ namespace CaOrdersServer
             DateTime t = (DateTime)this.MaxBy(o => o.dt_create)?.dt_create!;
 
             int ind = G._I(G.db_select(
-                @$"--update Orders set state = 3, dtu = getdate() 
-
+                @$"
                     select count(*) c from Orders 
                     where usr_id={_user.ID} and exchange={exchan} 
                     and dt_create between '{f.ToString("yyyy-MM-dd")} 00:00' and '{t.ToString("yyyy-MM-dd")} 23:59'
-                
-                --select @@ROWCOUNT
                 "
             ));
 
-            Progress(new Message(3, _user, (Exch)exchan, "Order.Update", 
-                $"GetOrders({(Exch)exchan}) all:{cnt} opn:{opn} can:{can} fil:{fil} not:{not} ind:{ind} from:{f} to:{t}"));
+            Progress(new Message(3, _user, (Exch)exchan, "Orders.Update", 
+                $"all:{cnt} opn:{opn} can:{can} fil:{fil} not:{not} ind:{ind} from:{f} to:{t}"));
         }
         public new void Add(Order o)
         {

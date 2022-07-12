@@ -3,7 +3,7 @@
 namespace CaOrdersServer
 {
     
-    public static class Log
+    public static class LogToDb
     {
         public static void Write(string msg, int usr_id = 0)
         {

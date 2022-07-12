@@ -2,29 +2,14 @@
 
 namespace CaOrdersServer
 {
-    public class Message
-    {
-        public int type;
-        public User user;
-        public Exch exch;
-        public string src = "";
-        public string msg = "";
-        public Message(int t, User u, Exch e, string s, string m) { 
-            type = t; user = u; exch = e; src = s; msg = m; 
-        }
-    }
     public interface IApiCaller
     {
-        public event Action<Message>? OnProgress;
-
         public bool CheckApiKey();
         public Orders GetOrders();
         public Order GetOrder(string orderId, string symbol = "");
     }
     interface IApiSocket
     {
-        public event Action<Message>? OnProgress;
-
         bool InitOrdersListener(int minutesBetweenReconnect = 20);
         void KeepAlive(int minutesBetweenReconnect = 20);
         void Dispose(bool setNull = true);
@@ -38,9 +23,6 @@ namespace CaOrdersServer
     }
     public class Exchange
     {
-        public event Action<Message>? OnProgress;
-        void Progress(Message msg) => OnProgress?.Invoke(msg);
-
         ApiKey _apiKey;
         IApiCaller _caller;
         IApiSocket _socket;
@@ -67,9 +49,6 @@ namespace CaOrdersServer
                 _caller = new HuobCaller(usr);
                 _socket = new HuobSocket(usr);
             }
-
-            _caller.OnProgress += Progress;
-            _socket.OnProgress += Progress;
         }
         public bool CheckApiKeys()
         {
@@ -83,15 +62,14 @@ namespace CaOrdersServer
         {
             Task.Run(() =>
             {
-                Progress(new Message(1, _apiKey.User, _apiKey.Exch, "Exchange.UpdateOrders",
-                    "-------------------------------------START--ORDER--UPDATE-->"));
+                Msg.Send(1, _apiKey.User, _apiKey.Exch, "Exchange.UpdateOrders",
+                    "-------------------------------------START--ORDER--UPDATE-->");
                 
                 Orders orders = _caller.GetOrders();
-                orders.OnProgress += Progress;
                 orders.Update();
 
-                Progress(new Message(1, _apiKey.User, _apiKey.Exch, "Exchange.UpdateOrders",
-                    "-------------------------------------ORDER--UPDATE--FINISHED-->"));
+                Msg.Send(1, _apiKey.User, _apiKey.Exch, "Exchange.UpdateOrders",
+                    "-------------------------------------ORDER--UPDATE--FINISHED-->");
             });
         }
         public bool InitOrdersListener()

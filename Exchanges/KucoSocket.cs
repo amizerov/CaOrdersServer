@@ -9,8 +9,6 @@ namespace CaOrdersServer
 {
 	public class KucoSocket : IApiSocket
 	{
-		public event Action<Message>? OnProgress;
-
 		User _user;
 		ApiKey? _apiKey;
 
@@ -51,21 +49,21 @@ namespace CaOrdersServer
 							}
 							o.Update("KucoSocket");
 
-							OnProgress?.Invoke(new Message(2, _user, Exch.Kuco, "InitOrdersListener",
-								$"Order({ord.Symbol}/{ord.Side}/{ord.Price}) updated to {o.state}|{ord.Status}"));
+							Msg.Send(2, _user, Exch.Kuco, "InitOrdersListener",
+								$"Order({ord.Symbol}/{ord.Side}/{ord.Price}) updated to {o.state}|{ord.Status}");
 						},
 						onTradeData =>
 						{
 							KucoinStreamOrderMatchUpdate trd = onTradeData.Data;
-							OnProgress?.Invoke(new Message(2, _user, Exch.Kuco, "InitOrdersListener", 
-								$"Trade({trd.Symbol}/{trd.Side}/{trd.Price}) updated to {trd.Status}"));
+							Msg.Send(2, _user, Exch.Kuco, "InitOrdersListener", 
+								$"Trade({trd.Symbol}/{trd.Side}/{trd.Price}) updated to {trd.Status}");
 						}
 					).Result;
 					if (res.Success)
 					{
 						_socketSubscr = res.Data;
-						OnProgress?.Invoke(new Message(2, _user, Exch.Kuco, 
-							"InitOrdersListener", $"Kuco({_user.Name}): socket init ok"));
+						Msg.Send(2, _user, Exch.Kuco, 
+							"InitOrdersListener", $"Kuco({_user.Name}): socket init ok");
 
 						Task.Run(() => KeepAlive(minutesToReconnect));
 
@@ -73,15 +71,15 @@ namespace CaOrdersServer
 					}
 					else
 					{
-						OnProgress?.Invoke(new Message(2, _user, Exch.Kuco, 
-							"InitOrdersListener", $"Error in SubscribeToUserData: \r\n{res.Error?.Message}"));
+						Msg.Send(2, _user, Exch.Kuco, 
+							"InitOrdersListener", $"Error in SubscribeToUserData: \r\n{res.Error?.Message}");
 					}
 				}
 			}
 			catch (Exception ex)
             {
-				OnProgress?.Invoke(new Message(2, _user, Exch.Kuco, 
-					"InitOrdersListener", $"Exception in SubscribeToUserData: \r\n{ex.Message}"));
+				Msg.Send(2, _user, Exch.Kuco, 
+					"InitOrdersListener", $"Exception in SubscribeToUserData: \r\n{ex.Message}");
 			}
 			return b;
 		}
@@ -90,8 +88,8 @@ namespace CaOrdersServer
 			Thread.Sleep(minutesToReconnect * 60 * 1000);
 			_socketSubscr?.ReconnectAsync();
 
-			OnProgress?.Invoke(new Message(2, _user, Exch.Kuco, 
-				"KeepAlive", $"socket reconnected"));
+			Msg.Send(2, _user, Exch.Kuco, 
+				"KeepAlive", $"socket reconnected");
 
 			KeepAlive(minutesToReconnect);
 		}
@@ -103,8 +101,8 @@ namespace CaOrdersServer
 				_socketClient.UnsubscribeAllAsync();
 				if (setNull) _socketClient = null;
 
-				OnProgress?.Invoke(new Message(2, _user, Exch.Kuco, 
-					"Dispose", "socket disposed"));
+				Msg.Send(2, _user, Exch.Kuco, 
+					"Dispose", "socket disposed");
 			}
 		}
 	}

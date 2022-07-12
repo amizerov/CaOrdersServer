@@ -9,8 +9,6 @@ namespace CaOrdersServer
 {
 	public class HuobSocket : IApiSocket
 	{
-		public event Action<Message>? OnProgress;
-
 		User _user;
 		ApiKey? _apiKey;
 
@@ -46,14 +44,14 @@ namespace CaOrdersServer
 						HuobiSubmittedOrderUpdate ord = onOrderUpdateMessage.Data;
 						new Order(ord, _user.ID).Update("HuobSocket");
 
-						OnProgress?.Invoke(new Message(2, _user, Exch.Huob, "InitOrdersListener",
-							$"Order({ord.Symbol}/{ord.Side}/{ord.Price}) updated to {ord.Status}"));
+					Msg.Send(2, _user, Exch.Huob, "InitOrdersListener",
+							$"Order({ord.Symbol}/{ord.Side}/{ord.Price}) updated to {ord.Status}");
 					}
 				).Result;
 				if (res.Success)
 				{
 					_socketSubscr = res.Data;
-					OnProgress?.Invoke(new Message(2, _user, Exch.Huob, "InitOrdersListener", "socket init ok"));
+					Msg.Send(2, _user, Exch.Huob, "InitOrdersListener", "socket init ok");
 
 					Task.Run(() => KeepAlive(minutesToReconnect));
 
@@ -61,14 +59,14 @@ namespace CaOrdersServer
 				}
 				else
 				{
-					OnProgress?.Invoke(new Message(2, _user, Exch.Huob, "InitOrdersListener", 
-						$"Error in SubscribeToUserDataUpdatesAsync: {res.Error?.Message}"));
+					Msg.Send(2, _user, Exch.Huob, "InitOrdersListener", 
+						$"Error in SubscribeToUserDataUpdatesAsync: {res.Error?.Message}");
 				}
 			}
 			catch (Exception ex)
 			{
-				OnProgress?.Invoke(new Message(2, _user, Exch.Huob, "InitOrdersListener", 
-					$"Exception in SubscribeToUserDataUpdatesAsync: {ex.Message}"));
+				Msg.Send(2, _user, Exch.Huob, "InitOrdersListener", 
+					$"Exception in SubscribeToUserDataUpdatesAsync: {ex.Message}");
 			}
 			return b;
 		}
@@ -77,7 +75,7 @@ namespace CaOrdersServer
 			Thread.Sleep(minutesToReconnect * 60 * 1000);
 			_socketSubscr?.ReconnectAsync();
 
-			OnProgress?.Invoke(new Message(2, _user, Exch.Huob, "KeepAlive", "socket reconnected"));
+			Msg.Send(2, _user, Exch.Huob, "KeepAlive", "socket reconnected");
 			KeepAlive(minutesToReconnect);
 		}
 		public void Dispose(bool setNull = true)
@@ -87,7 +85,7 @@ namespace CaOrdersServer
 				_socketClient.UnsubscribeAllAsync();
 				if (setNull) _socketClient = null;
 
-				OnProgress?.Invoke(new Message(2, _user, Exch.Huob, "Dispose", "socket disposed"));
+				Msg.Send(2, _user, Exch.Huob, "Dispose", "socket disposed");
 			}
 		}
 	}

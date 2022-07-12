@@ -5,9 +5,6 @@ namespace CaOrdersServer
 {
     public class User
     {
-        public event Action<Message>? OnProgress;
-        void Progress(Message msg) => OnProgress?.Invoke(msg);
-
         public int ID;
         public string Name;
         public string Email;
@@ -30,16 +27,12 @@ namespace CaOrdersServer
 
                 Exchange exc = new Exchange(key);
                 Exchanges.Add(exc);
-                exc.OnProgress += Progress;
             }
         }
     }
 
     public class Users : List<User>
     {
-        public event Action<Message>? OnProgress;
-        void Progress(Message msg) => OnProgress?.Invoke(msg);
-
         public Users()
         {
             string sql = "select distinct u.* from Users u join UserKeys k on u.id = k.usr_id where IsConfirmed = 1";
@@ -48,8 +41,6 @@ namespace CaOrdersServer
             {
                 User user = new User(r);
                 Add(user);
-
-                user.OnProgress += Progress;
             }
         }
     }

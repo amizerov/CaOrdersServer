@@ -8,9 +8,6 @@ namespace CaOrdersServer
 {
     public class HuobCaller : IApiCaller
     {
-        public event Action<Message>? OnProgress;
-        void Progress(Message msg) => OnProgress?.Invoke(msg);
-
         User _user;
         ApiKey? _apiKey;
         HuobiClient _restClient = new();
@@ -35,7 +32,7 @@ namespace CaOrdersServer
                 }
                 catch (Exception ex)
                 {
-                    OnProgress?.Invoke(new Message(1, _user, Exch.Huob, "CheckApiKey", $" Error: {ex.Message}"));
+                    Msg.Send(1, _user, Exch.Huob, "CheckApiKey", $" Error: {ex.Message}");
 
                     return false;
                 }
@@ -45,7 +42,7 @@ namespace CaOrdersServer
 
                 _apiKey.IsWorking = res;
 
-                OnProgress?.Invoke(new Message(1, _user, Exch.Huob, "CheckApiKey", $"Key.IsWorking: {_apiKey.IsWorking}"));
+                Msg.Send(1, _user, Exch.Huob, "CheckApiKey", $"Key.IsWorking: {_apiKey.IsWorking}");
             }
 
             return res;
@@ -65,15 +62,15 @@ namespace CaOrdersServer
                     }
                     else
                     {
-                        OnProgress?.Invoke(new Message(1, _user, Exch.Huob, "GetBalances", 
-                            $"Error GetBalancesAsync: {res.Error?.Message}"));
+                        Msg.Send(1, _user, Exch.Huob, "GetBalances", 
+                            $"Error GetBalancesAsync: {res.Error?.Message}");
                     }
                 }
             }
             else
             {
-                OnProgress?.Invoke(new Message(1, _user, Exch.Huob, "GetBalances",
-                    $"Error GetAccountsAsync: {res.Error?.Message}"));
+                Msg.Send(1, _user, Exch.Huob, "GetBalances", 
+                    $"Error GetAccountsAsync: {res.Error?.Message}");
             }
             return balances;
         }
@@ -83,11 +80,11 @@ namespace CaOrdersServer
         }
         public Orders GetOrders()
         {
-            Orders orders = new(_user); orders.OnProgress += Progress;
+            Orders orders = new(_user);
 
             if (_apiKey != null && _apiKey.IsWorking)
             {
-                OnProgress?.Invoke(new Message(1, _user, Exch.Huob, "GetOrders", "GetOrders started"));
+                Msg.Send(1, _user, Exch.Huob, "GetOrders", "GetOrders started");
 
                 var ro = _restClient.SpotApi.Trading.GetOpenOrdersAsync().Result;
                 if (ro.Success)
@@ -105,8 +102,8 @@ namespace CaOrdersServer
                         orders.Add(new Order(o));
                     }
 ;                }
-                OnProgress?.Invoke(new Message(1, _user, Exch.Huob, "GetOrders",
-                    $"GetOrders orders.Count = {orders.Count}"));
+                Msg.Send(1, _user, Exch.Huob, "GetOrders",
+                    $"GetOrders orders.Count = {orders.Count}");
             }
             return orders;
         }

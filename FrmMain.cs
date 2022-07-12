@@ -9,8 +9,11 @@ namespace CaOrdersServer
        */
         // Все юзеры сразу создаются
         Users users = new();
+
+        // Создаются при выборе узла дерева
         User? SelectedUser;
         Exchange? SelectedExch;
+
         bool needToRestoreTableOrdersLayout = true;
 
         public FrmMain()
@@ -20,7 +23,8 @@ namespace CaOrdersServer
         }
         private void FrmMain_Load(object sender, EventArgs e)
         {
-            users.OnProgress += Progress;
+            // Все сообщения о прогрессе будут приходить в метод Progress
+            LogToForm.Instance.Init(Progress);
 
             LoadTreeList();
 
@@ -156,7 +160,7 @@ namespace CaOrdersServer
             treeList.ExpandAll();
         }
 
-        void Progress(Message msg)
+        void Progress(Msg msg)
         {
             string m = 
                 $"[{DateTime.Now.ToString("hh:mm:ss")}] {msg.exch}({msg.user.Name}) {msg.src} {msg.msg}\r\n";

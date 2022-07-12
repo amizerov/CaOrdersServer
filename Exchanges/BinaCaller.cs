@@ -9,9 +9,6 @@ namespace CaOrdersServer
 {
     public class BinaCaller : IApiCaller
     {
-        public event Action<Message>? OnProgress;
-        void Progress(Message msg) => OnProgress?.Invoke(msg);
-
         protected User _user;
         protected ApiKey? _apiKey;
 
@@ -36,7 +33,7 @@ namespace CaOrdersServer
                 }
                 catch (Exception ex)
                 {
-                    OnProgress?.Invoke(new Message(1, _user, Exch.Bina, "CheckApiKey", $"Error: {ex.Message}"));
+                    Msg.Send(1, _user, Exch.Bina, "CheckApiKey", $"Error: {ex.Message}");
 
                     return false;
                 }
@@ -46,9 +43,8 @@ namespace CaOrdersServer
 
                 _apiKey.IsWorking = res;
             
-                OnProgress?.Invoke(new Message(1, _user, Exch.Bina, "CheckApiKey", $"Key.IsWorking: {_apiKey.IsWorking}"));
+                Msg.Send(1, _user, Exch.Bina, "CheckApiKey", $"Key.IsWorking: {_apiKey.IsWorking}");
             }
-
             return res;
         }
         List<BinanceBalance> GetBalances()
@@ -61,8 +57,8 @@ namespace CaOrdersServer
             }
             else
             {
-                OnProgress?.Invoke(new Message(1, _user, Exch.Bina, "GetBalances", 
-                    $"Error GetAccountInfoAsync: {res.Error?.Message}"));
+                Msg.Send(1, _user, Exch.Bina, "GetBalances", 
+                    $"Error GetAccountInfoAsync: {res.Error?.Message}");
             }
             return balances;
         }
@@ -88,11 +84,11 @@ namespace CaOrdersServer
         }
         public Orders GetOrders()
         {
-            Orders orders = new(_user); orders.OnProgress += Progress;
+            Orders orders = new(_user);
 
             if (_apiKey != null && _apiKey.IsWorking)
             {
-                Progress(new Message(1, _user, Exch.Bina, "GetOrders", "Started"));
+                Msg.Send(1, _user, Exch.Bina, "GetOrders", "Started");
 
                 List<string> symbols = GetUserTradedSymbols();
                 foreach (var symbo in symbols)
@@ -112,15 +108,15 @@ namespace CaOrdersServer
                             }
                         }
                         else
-                            Progress(new Message(1, _user, Exch.Bina, "GetOrders",
-                                "SPOT {symbo} GetOrders Error: resSpot.Data == NULL"));
+                            Msg.Send(1, _user, Exch.Bina, "GetOrders",
+                                $"SPOT {symbo} GetOrders Error: resSpot.Data == NULL");
                     }
                     else
-                        Progress(new Message(1, _user, Exch.Bina, "GetOrders", 
-                            $"SPOT {symbo} GetOrders Error: {resSpot.Error?.Message}"));
+                        Msg.Send(1, _user, Exch.Bina, "GetOrders", 
+                            $"SPOT {symbo} GetOrders Error: {resSpot.Error?.Message}");
 
 
-                    if (IsAccountMargine())
+                    if (IsAccountMargin())
                     {
                         var resMarg = _restClient!.SpotApi.Trading.GetMarginOrdersAsync(symbo).Result;
                         if (resMarg.Success)
@@ -135,22 +131,22 @@ namespace CaOrdersServer
                                 }
                             }
                             else
-                                Progress(new Message(1, _user, Exch.Bina, "GetOrders",
-                                    $"MARG {symbo} GetMarginOrders Error: resMarg.Data == NULL"));
+                                Msg.Send(1, _user, Exch.Bina, "GetOrders",
+                                    $"MARG {symbo} GetMarginOrders Error: resMarg.Data == NULL");
                         }
                         else
-                            Progress(new Message(1, _user, Exch.Bina, "GetOrders",
-                                $"MARG {symbo} GetMarginOrders Error: {resMarg.Error?.Message}"));
+                            Msg.Send(1, _user, Exch.Bina, "GetOrders",
+                                $"MARG {symbo} GetMarginOrders Error: {resMarg.Error?.Message}");
                     }
                     if (cntSpot + cntMarg > 0)
-                        Progress(new Message(1, _user, Exch.Bina, $"GetOrders({symbo})", 
-                            $"Spot:{cntSpot} Marg:{cntMarg} All:{ordersFound} orders found"));
+                        Msg.Send(1, _user, Exch.Bina, $"GetOrders({symbo})", 
+                            $"Spot:{cntSpot} Marg:{cntMarg} All:{ordersFound} orders found");
 
                     Thread.Sleep(1000);
                     cntSpot = cntMarg = 0;
                 }
-                Progress(new Message(1, _user, Exch.Bina, "GetOrders",
-                    $"Finished, orders.Count = {orders.Count}"));
+                Msg.Send(1, _user, Exch.Bina, "GetOrders",
+                    $"Finished, orders.Count = {orders.Count}");
             }
             return orders;
         }
@@ -185,7 +181,7 @@ namespace CaOrdersServer
 
             return sl;            
         }
-        private bool IsAccountMargine()
+        private bool IsAccountMargin()
         {
             // TODO: не работает
             bool isMargAcc = true; // false;

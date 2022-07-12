@@ -12,8 +12,8 @@ namespace CaOrdersServer
     public class Order : CaOrder
     {
         public User? User;
-        public event Action<Message>? OnProgress;
-        void Progress(Message msg) => OnProgress?.Invoke(msg);
+        public event Action<Msg>? OnProgress;
+        void Progress(Msg msg) => OnProgress?.Invoke(msg);
 
         public Order() { }
         //---------------------------------
@@ -201,7 +201,7 @@ namespace CaOrdersServer
                         {
                             int stt = (int)o.state;
                             G.db_exec($"insert OrderStateHistory(oid, state, src) values({o.id}, {stt}, '{src}')");
-                            Progress(new Message(3, this.User!, (Exch)exchange, "Order.Update", msg));
+                            Progress(new Msg(3, this.User!, (Exch)exchange, "Order.Update", msg));
                         }
                         if (msg.Length > 0)
                         {
@@ -219,7 +219,7 @@ namespace CaOrdersServer
                     }
                     if (msg.Length > 0)
                     {
-                        Progress(new Message(3, this.User!, (Exch)exchange, "Order.Update", msg));
+                        Msg.Send(3, this.User!, (Exch)exchange, "Order.Update", msg);
                         try
                         {
                             dtu = DateTime.Now;
@@ -228,13 +228,13 @@ namespace CaOrdersServer
                         catch (Exception ex)
                         {
                             msg = msg + "\r\n" + "Exception: " + ex.Message + "\r\n" + ex.InnerException;
-                            Progress(new Message(3, this.User!, (Exch)exchange, "Order.Update", msg));
+                            Msg.Send(3, this.User!, (Exch)exchange, "Order.Update", msg);
                         }
                     }
                 }
                 catch(Exception ex)
                 {
-                    Progress(new Message(3, this.User!, (Exch)exchange, "Exception in Order.Update", ex.Message));
+                    Msg.Send(3, this.User!, (Exch)exchange, "Exception in Order.Update", ex.Message);
                 }
                 return newOrUpdated;
             }
@@ -244,8 +244,8 @@ namespace CaOrdersServer
     ///////////////////////////////////////////
     public class Orders : List<Order>
     {
-        public event Action<Message>? OnProgress;
-        void Progress(Message msg) => OnProgress?.Invoke(msg);
+        public event Action<Msg>? OnProgress;
+        void Progress(Msg msg) => OnProgress?.Invoke(msg);
 
         // Список содержит все ордера юзера, полученные с биржи
         private User _user;
@@ -273,6 +273,7 @@ namespace CaOrdersServer
                     update Orders set IsNotFound=1, dtu = getdate() 
                      where usr_id={_user.ID} and exchange={exchan} 
                        and not ord_id in ({listOrdersComaSeparated})
+                       and IsNotFound=0
                 
                     select @@ROWCOUNT
                 "
@@ -289,8 +290,8 @@ namespace CaOrdersServer
                 "
             ));
 
-            Progress(new Message(3, _user, (Exch)exchan, "Orders.Update", 
-                $"all:{cnt} opn:{opn} can:{can} fil:{fil} not:{not} ind:{ind} from:{f} to:{t}"));
+            Msg.Send(3, _user, (Exch)exchan, "Orders.Update", 
+                $"all:{cnt} opn:{opn} can:{can} fil:{fil} not:{not} ind:{ind} from:{f} to:{t}");
         }
         public new void Add(Order o)
         {
@@ -306,8 +307,8 @@ namespace CaOrdersServer
             }
             else
             {
-                Progress(new Message(3, _user, (Exch)exchan, 
-                    "Order.Add", $"this order({o.ord_id}|{o.dt_create}) already added"));
+                Msg.Send(3, _user, (Exch)exchan, 
+                    "Order.Add", $"this order({o.ord_id}|{o.dt_create}) already added");
             }
         }
     }

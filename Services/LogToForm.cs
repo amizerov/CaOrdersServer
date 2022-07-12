@@ -20,11 +20,10 @@
     {
         static Action<Msg>? _write;
         public static void Write(Msg msg) => _write?.Invoke(msg);
+
         static object _lockFlag = new object();
         static LogToForm? _instance;
-        public LogToForm()
-        {
-        }
+
         public static LogToForm Instance
         {
             get
